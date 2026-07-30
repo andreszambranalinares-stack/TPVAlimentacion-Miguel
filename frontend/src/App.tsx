@@ -53,7 +53,7 @@ export default function App() {
       <div className="min-h-screen bg-slate-100">
         <nav className="bg-slate-800 text-white print:hidden">
           <div className="mx-auto flex max-w-6xl items-center gap-1 px-4">
-            <span className="mr-4 py-3 text-lg font-bold">🛒 TPV Alimentación</span>
+            <span className="mr-4 py-3 text-lg font-bold">🛒 Alimentación Miguel</span>
             {visibles.map((e) => (
               <NavLink
                 key={e.ruta}

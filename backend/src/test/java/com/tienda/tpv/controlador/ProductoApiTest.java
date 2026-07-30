@@ -177,6 +177,6 @@ class ProductoApiTest {
     void laDocumentacionOpenApiEstaDisponible() throws Exception {
         mockMvc.perform(get("/api-docs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.info.title").value("TPV Alimentación — API"));
+                .andExpect(jsonPath("$.info.title").value("Alimentación Miguel — API"));
     }
 }
