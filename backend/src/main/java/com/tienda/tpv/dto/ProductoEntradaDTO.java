@@ -1,7 +1,9 @@
 package com.tienda.tpv.dto;
 
 import com.tienda.tpv.dominio.UnidadMedida;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -26,12 +28,17 @@ public record ProductoEntradaDTO(
 
         @NotNull(message = "El precio de venta es obligatorio")
         @DecimalMin(value = "0.00", message = "El precio de venta no puede ser negativo")
+        @Digits(integer = 8, fraction = 2, message = "El precio de venta tiene demasiados dígitos")
         BigDecimal precioVenta,
 
         @DecimalMin(value = "0.00", message = "El precio de coste no puede ser negativo")
+        @Digits(integer = 8, fraction = 2, message = "El precio de coste tiene demasiados dígitos")
         BigDecimal precioCoste,
 
         @NotNull(message = "El porcentaje de IVA es obligatorio")
+        @DecimalMin(value = "0", message = "El IVA no puede ser negativo")
+        @DecimalMax(value = "21", message = "El IVA no puede ser mayor de 21")
+        @Digits(integer = 3, fraction = 1, message = "El IVA tiene demasiados dígitos")
         BigDecimal ivaPorcentaje,
 
         @DecimalMin(value = "0", message = "El stock mínimo no puede ser negativo")

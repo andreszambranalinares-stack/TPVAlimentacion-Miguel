@@ -88,6 +88,37 @@ class ProductoApiTest {
     }
 
     @Test
+    void altaConIvaFueraDeRangoDevuelve400ConDetalleDeCampo() throws Exception {
+        mockMvc.perform(post("/api/productos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Producto con IVA inválido",
+                                  "precioVenta": 1.00,
+                                  "ivaPorcentaje": -5,
+                                  "unidadMedida": "UNIDAD"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("VALIDACION"))
+                .andExpect(jsonPath("$.detalles.ivaPorcentaje").exists());
+
+        mockMvc.perform(post("/api/productos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Producto con IVA absurdo",
+                                  "precioVenta": 1.00,
+                                  "ivaPorcentaje": 999,
+                                  "unidadMedida": "UNIDAD"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("VALIDACION"))
+                .andExpect(jsonPath("$.detalles.ivaPorcentaje").exists());
+    }
+
+    @Test
     void busquedaPorNombreParcialEncuentraElProducto() throws Exception {
         mockMvc.perform(post("/api/productos")
                         .contentType(MediaType.APPLICATION_JSON)

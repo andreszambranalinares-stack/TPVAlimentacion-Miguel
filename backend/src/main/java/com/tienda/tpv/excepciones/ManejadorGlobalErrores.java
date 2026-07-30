@@ -3,6 +3,8 @@ package com.tienda.tpv.excepciones;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
@@ -63,6 +65,26 @@ public class ManejadorGlobalErrores {
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorRespuesta integridad(DataIntegrityViolationException ex) {
         return new ErrorRespuesta("CONFLICTO", "La operación viola restricciones de integridad de datos");
+    }
+
+    /**
+     * Las comprobaciones de @PreAuthorize (p. ej. AJUSTE reservado a ADMIN) lanzan
+     * AccessDeniedException durante el dispatch normal de MVC, así que las resuelve
+     * este @RestControllerAdvice antes de que lleguen al accessDeniedHandler de
+     * SeguridadConfig (pensado para las reglas de authorizeHttpRequests). Devolvemos
+     * el mismo formato para que el frontend no tenga que distinguir el origen del 403.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorRespuesta accesoDenegado(AccessDeniedException ex) {
+        return new ErrorRespuesta("SIN_PERMISOS", "No tienes permisos para esta operación");
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorRespuesta conflictoConcurrencia(ObjectOptimisticLockingFailureException ex) {
+        return new ErrorRespuesta("CONFLICTO_CONCURRENCIA",
+                "Otro cambio ha modificado este producto al mismo tiempo. Vuelve a intentarlo.");
     }
 
     @ExceptionHandler(Exception.class)

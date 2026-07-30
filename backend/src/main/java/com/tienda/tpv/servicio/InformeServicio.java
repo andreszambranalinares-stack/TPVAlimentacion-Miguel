@@ -6,7 +6,6 @@ import com.tienda.tpv.dominio.Venta;
 import com.tienda.tpv.dto.InformeVentasDTO;
 import com.tienda.tpv.dto.ProductoVendidoDTO;
 import com.tienda.tpv.dto.ValorInventarioDTO;
-import com.tienda.tpv.excepciones.ValidacionException;
 import com.tienda.tpv.repositorio.LineaVentaRepositorio;
 import com.tienda.tpv.repositorio.ProductoRepositorio;
 import com.tienda.tpv.repositorio.VentaRepositorio;
@@ -139,8 +138,6 @@ public class InformeServicio {
     }
 
     private void validarRango(LocalDate desde, LocalDate hasta) {
-        if (hasta.isBefore(desde)) {
-            throw new ValidacionException("La fecha final no puede ser anterior a la inicial");
-        }
+        RangoFechasValidador.validar(desde, hasta);
     }
 }

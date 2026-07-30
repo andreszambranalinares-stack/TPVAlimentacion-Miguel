@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   buscarProductos,
+  esErrorDeSesionCaducada,
   listarProveedores,
   mensajeDeError,
   movimientosDeProducto,
   registrarMovimiento,
 } from '../api'
+import { useEsAdmin } from '../AuthContexto'
 import type { MovimientoStock, Producto, Proveedor, TipoMovimiento } from '../tipos'
 
 const nombresTipo: Record<TipoMovimiento, string> = {
@@ -16,6 +18,7 @@ const nombresTipo: Record<TipoMovimiento, string> = {
 }
 
 export default function Stock() {
+  const esAdmin = useEsAdmin()
   const [productos, setProductos] = useState<Producto[]>([])
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [texto, setTexto] = useState('')
@@ -24,6 +27,7 @@ export default function Stock() {
   const [movimientos, setMovimientos] = useState<MovimientoStock[]>([])
   const [error, setError] = useState('')
   const [mensaje, setMensaje] = useState('')
+  const [cargando, setCargando] = useState(true)
 
   const [tipo, setTipo] = useState<TipoMovimiento>('ENTRADA')
   const [cantidad, setCantidad] = useState('')
@@ -31,9 +35,13 @@ export default function Stock() {
   const [proveedorId, setProveedorId] = useState<number | ''>('')
 
   const cargarProductos = useCallback(() => {
+    setCargando(true)
     buscarProductos(texto)
       .then((lista) => setProductos(soloBajoMinimo ? lista.filter((p) => p.bajoMinimo) : lista))
-      .catch((e) => setError(mensajeDeError(e)))
+      .catch((e) => {
+        if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
+      })
+      .finally(() => setCargando(false))
   }, [texto, soloBajoMinimo])
 
   useEffect(() => {
@@ -42,7 +50,11 @@ export default function Stock() {
   }, [cargarProductos])
 
   useEffect(() => {
-    listarProveedores().then(setProveedores).catch(() => {})
+    listarProveedores()
+      .then(setProveedores)
+      .catch((e) => {
+        if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
+      })
   }, [])
 
   const seleccionar = (p: Producto) => {
@@ -55,6 +67,12 @@ export default function Stock() {
   const registrar = async (evento: React.FormEvent) => {
     evento.preventDefault()
     if (!seleccionado) return
+    if (tipo === 'AJUSTE') {
+      const confirmado = confirm(
+        `¿Confirmas el ajuste manual de ${cantidad} en "${seleccionado.nombre}"? Esta operación corrige el stock directamente.`,
+      )
+      if (!confirmado) return
+    }
     setError('')
     setMensaje('')
     const proveedor = proveedores.find((prov) => prov.id === proveedorId)
@@ -79,7 +97,7 @@ export default function Stock() {
       if (actualizado) setSeleccionado(actualizado)
       movimientosDeProducto(seleccionado.id).then(setMovimientos)
     } catch (e) {
-      setError(mensajeDeError(e))
+      if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
     }
   }
 
@@ -125,7 +143,14 @@ export default function Stock() {
                 <td className="p-3 text-right text-slate-500">{p.stockMinimo}</td>
               </tr>
             ))}
-            {productos.length === 0 && (
+            {cargando && (
+              <tr>
+                <td colSpan={3} className="p-6 text-center text-slate-400">
+                  Cargando…
+                </td>
+              </tr>
+            )}
+            {!cargando && productos.length === 0 && (
               <tr>
                 <td colSpan={3} className="p-6 text-center text-slate-400">
                   Sin productos.
@@ -157,11 +182,13 @@ export default function Stock() {
                     onChange={(e) => setTipo(e.target.value as TipoMovimiento)}
                     className="w-full rounded border p-2"
                   >
-                    {(Object.keys(nombresTipo) as TipoMovimiento[]).map((t) => (
-                      <option key={t} value={t}>
-                        {nombresTipo[t]}
-                      </option>
-                    ))}
+                    {(Object.keys(nombresTipo) as TipoMovimiento[])
+                      .filter((t) => t !== 'AJUSTE' || esAdmin)
+                      .map((t) => (
+                        <option key={t} value={t}>
+                          {nombresTipo[t]}
+                        </option>
+                      ))}
                   </select>
                 </label>
                 <label>

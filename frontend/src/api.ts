@@ -18,11 +18,17 @@ import type {
 
 const api = axios.create({ baseURL: '/api' })
 
+/** true si el error es un 401 que debe llevar al login (no el del propio formulario de login). */
+export function esErrorDeSesionCaducada(error: unknown): boolean {
+  const axiosError = error as AxiosError
+  return axiosError.response?.status === 401 && !axiosError.config?.url?.startsWith('/auth')
+}
+
 // Si la sesión caduca, avisamos a la aplicación para volver al login
 api.interceptors.response.use(
   (respuesta) => respuesta,
   (error: AxiosError) => {
-    if (error.response?.status === 401 && !error.config?.url?.startsWith('/auth')) {
+    if (esErrorDeSesionCaducada(error)) {
       window.dispatchEvent(new Event('sesion-caducada'))
     }
     return Promise.reject(error)
@@ -54,9 +60,17 @@ export const cerrarCaja = (datos: { fecha?: string; efectivoContado: number; not
 export const listarCierres = () => api.get<CierreCaja[]>('/cierres-caja').then((r) => r.data)
 
 // Productos
-export const buscarProductos = (texto?: string, categoriaId?: number, incluirInactivos = false) =>
+export const buscarProductos = (
+  texto?: string,
+  categoriaId?: number,
+  incluirInactivos = false,
+  signal?: AbortSignal,
+) =>
   api
-    .get<Producto[]>('/productos', { params: { texto: texto || undefined, categoriaId, incluirInactivos } })
+    .get<Producto[]>('/productos', {
+      params: { texto: texto || undefined, categoriaId, incluirInactivos },
+      signal,
+    })
     .then((r) => r.data)
 
 export const productoPorCodigoBarras = (codigo: string) =>

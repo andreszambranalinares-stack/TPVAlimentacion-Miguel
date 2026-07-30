@@ -1,6 +1,5 @@
 import type { Venta } from '../tipos'
-
-const euros = (n: number) => n.toFixed(2).replace('.', ',') + ' €'
+import { euros } from '../utils'
 
 /** Ticket imprimible en formato de impresora térmica (58/80 mm). */
 export default function Ticket({ venta }: { venta: Venta }) {

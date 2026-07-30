@@ -8,6 +8,13 @@ spring:
     hibernate:
       ddl-auto: validate
 
+server:
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+
 springdoc:
   api-docs:
     path: /api-docs

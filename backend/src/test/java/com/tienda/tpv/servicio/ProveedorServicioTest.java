@@ -1,0 +1,83 @@
+package com.tienda.tpv.servicio;
+
+import com.tienda.tpv.dominio.Proveedor;
+import com.tienda.tpv.dto.ProveedorDTO;
+import com.tienda.tpv.dto.ProveedorEntradaDTO;
+import com.tienda.tpv.excepciones.RecursoNoEncontradoException;
+import com.tienda.tpv.repositorio.ProveedorRepositorio;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class ProveedorServicioTest {
+
+    @Mock
+    private ProveedorRepositorio proveedorRepositorio;
+
+    @InjectMocks
+    private ProveedorServicio proveedorServicio;
+
+    @Test
+    void crearGuardaElProveedorConDatosNormalizados() {
+        when(proveedorRepositorio.save(any(Proveedor.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ProveedorDTO creado = proveedorServicio.crear(
+                new ProveedorEntradaDTO("  Droguerías López  ", "912345678", "Marta"));
+
+        assertThat(creado.nombre()).isEqualTo("Droguerías López");
+
+        ArgumentCaptor<Proveedor> captor = ArgumentCaptor.forClass(Proveedor.class);
+        verify(proveedorRepositorio).save(captor.capture());
+        assertThat(captor.getValue().getNombre()).isEqualTo("Droguerías López");
+        assertThat(captor.getValue().getTelefono()).isEqualTo("912345678");
+    }
+
+    @Test
+    void obtenerDevuelveDTOCorrecto() {
+        Proveedor proveedor = new Proveedor("Panadería Central", "600111222", "Juan");
+        proveedor.setId(5L);
+        when(proveedorRepositorio.findById(5L)).thenReturn(Optional.of(proveedor));
+
+        ProveedorDTO dto = proveedorServicio.obtener(5L);
+
+        assertThat(dto.id()).isEqualTo(5L);
+        assertThat(dto.nombre()).isEqualTo("Panadería Central");
+    }
+
+    @Test
+    void obtenerProveedorInexistenteLanzaNoEncontrado() {
+        when(proveedorRepositorio.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> proveedorServicio.obtener(99L))
+                .isInstanceOf(RecursoNoEncontradoException.class);
+    }
+
+    @Test
+    void actualizarProveedorInexistenteLanzaNoEncontrado() {
+        when(proveedorRepositorio.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> proveedorServicio.actualizar(99L,
+                new ProveedorEntradaDTO("Nuevo nombre", null, null)))
+                .isInstanceOf(RecursoNoEncontradoException.class);
+    }
+
+    @Test
+    void eliminarProveedorInexistenteLanzaNoEncontrado() {
+        when(proveedorRepositorio.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> proveedorServicio.eliminar(99L))
+                .isInstanceOf(RecursoNoEncontradoException.class);
+    }
+}

@@ -4,6 +4,7 @@ import com.tienda.tpv.dto.CredencialesDTO;
 import com.tienda.tpv.dto.UsuarioDTO;
 import com.tienda.tpv.excepciones.ErrorRespuesta;
 import com.tienda.tpv.repositorio.UsuarioRepositorio;
+import com.tienda.tpv.servicio.LimitadorAccesoServicio;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,19 +34,27 @@ public class AuthControlador {
     private final AuthenticationManager gestorAutenticacion;
     private final SecurityContextRepository repositorioContexto;
     private final UsuarioRepositorio usuarioRepositorio;
+    private final LimitadorAccesoServicio limitadorAcceso;
 
     public AuthControlador(AuthenticationManager gestorAutenticacion,
                            SecurityContextRepository repositorioContexto,
-                           UsuarioRepositorio usuarioRepositorio) {
+                           UsuarioRepositorio usuarioRepositorio,
+                           LimitadorAccesoServicio limitadorAcceso) {
         this.gestorAutenticacion = gestorAutenticacion;
         this.repositorioContexto = repositorioContexto;
         this.usuarioRepositorio = usuarioRepositorio;
+        this.limitadorAcceso = limitadorAcceso;
     }
 
     @PostMapping("/login")
     @Operation(summary = "Iniciar sesión con usuario y contraseña (sesión de servidor)")
     public ResponseEntity<Object> login(@Valid @RequestBody CredencialesDTO credenciales,
                                         HttpServletRequest peticion, HttpServletResponse respuesta) {
+        if (limitadorAcceso.bloqueado(credenciales.nombreUsuario())) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(new ErrorRespuesta("DEMASIADOS_INTENTOS",
+                            "Demasiados intentos fallidos. Inténtalo de nuevo en unos minutos."));
+        }
         try {
             Authentication autenticacion = gestorAutenticacion.authenticate(
                     new UsernamePasswordAuthenticationToken(credenciales.nombreUsuario(), credenciales.password()));
@@ -53,8 +62,10 @@ public class AuthControlador {
             contexto.setAuthentication(autenticacion);
             SecurityContextHolder.setContext(contexto);
             repositorioContexto.saveContext(contexto, peticion, respuesta);
+            limitadorAcceso.reiniciar(credenciales.nombreUsuario());
             return ResponseEntity.ok(usuarioActual(autenticacion.getName()));
         } catch (AuthenticationException ex) {
+            limitadorAcceso.registrarFallo(credenciales.nombreUsuario());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new ErrorRespuesta("CREDENCIALES_INVALIDAS", "Usuario o contraseña incorrectos"));
         }

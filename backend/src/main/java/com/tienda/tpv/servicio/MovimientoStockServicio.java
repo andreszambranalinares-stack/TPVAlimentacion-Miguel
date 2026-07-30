@@ -11,6 +11,7 @@ import com.tienda.tpv.excepciones.ValidacionException;
 import com.tienda.tpv.repositorio.MovimientoStockRepositorio;
 import com.tienda.tpv.repositorio.ProductoRepositorio;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +34,10 @@ public class MovimientoStockServicio {
     /**
      * Registra un movimiento manual (compra a proveedor, ajuste de recuento o merma)
      * y actualiza el stock del producto. El stock nunca puede quedar negativo.
+     * El ajuste manual (AJUSTE) queda reservado a ADMIN; ENTRADA/SALIDA/MERMA
+     * siguen abiertos a cualquier usuario autenticado (recepción de pedidos, mermas diarias).
      */
+    @PreAuthorize("hasRole('ADMIN') or #entrada.tipo.name() != 'AJUSTE'")
     public MovimientoStockDTO registrar(MovimientoStockEntradaDTO entrada) {
         Producto producto = productoRepositorio.findById(entrada.productoId())
                 .orElseThrow(() -> new RecursoNoEncontradoException(
@@ -47,6 +51,7 @@ public class MovimientoStockServicio {
                             + producto.getStockActual().stripTrailingZeros().toPlainString() + ")");
         }
         producto.setStockActual(nuevoStock);
+        productoRepositorio.flush();
 
         MovimientoStock movimiento = new MovimientoStock();
         movimiento.setProducto(producto);
