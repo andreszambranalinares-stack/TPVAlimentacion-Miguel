@@ -2,8 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Impresión del ticket: solo se imprime el bloque .ticket-print,
-   con ancho pensado para impresoras térmicas de 58/80 mm */
+/* Impresión del ticket: solo se imprime el bloque .ticket-print.
+   Sin márgenes de página, el 100% del ancho es el del papel que declara el
+   driver de la impresora (unos 48 mm en rollos de 58 y 72 mm en los de 80),
+   así que el ticket se adapta al rollo sin tocar el código. El max-width
+   evita que se estire a folio entero si se imprime en una impresora normal. */
+@page {
+  margin: 0;
+}
+
 @media print {
   body * {
     visibility: hidden;
@@ -16,7 +23,9 @@
     position: absolute;
     left: 0;
     top: 0;
-    width: 72mm;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 72mm;
     padding: 2mm;
     font-size: 10px;
   }
