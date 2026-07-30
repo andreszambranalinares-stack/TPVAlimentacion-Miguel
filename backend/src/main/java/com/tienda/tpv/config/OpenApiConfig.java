@@ -11,7 +11,7 @@ public class OpenApiConfig {
     @Bean
     public OpenAPI apiTpv() {
         return new OpenAPI().info(new Info()
-                .title("TPV Alimentación — API")
+                .title("Alimentación Miguel — API")
                 .description("API REST del punto de venta e inventario para tienda de alimentación")
                 .version("v1"));
     }

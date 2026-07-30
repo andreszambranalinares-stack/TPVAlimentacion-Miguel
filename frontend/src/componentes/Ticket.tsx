@@ -7,8 +7,7 @@ export default function Ticket({ venta }: { venta: Venta }) {
   return (
     <div className="ticket-print mx-auto w-72 bg-white p-3 font-mono text-xs text-black">
       <div className="text-center">
-        <p className="text-sm font-bold">TPV ALIMENTACIÓN</p>
-        <p>Tienda de alimentación</p>
+        <p className="text-sm font-bold">ALIMENTACIÓN MIGUEL</p>
         <p>
           {fecha.toLocaleDateString('es-ES')} {fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
         </p>

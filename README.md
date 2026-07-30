@@ -1,6 +1,6 @@
-# TPV Alimentación
+# Alimentación Miguel — TPV e inventario
 
-Punto de venta (TPV) e inventario para una tienda de alimentación de barrio: gestión de productos con código de barras, pantalla de caja rápida (teclado + lector), control de stock con trazabilidad e informes.
+Punto de venta (TPV) e inventario para Alimentación Miguel, una tienda de alimentación de barrio: gestión de productos con código de barras, pantalla de caja rápida (teclado + lector), control de stock con trazabilidad e informes.
 
 ## Estructura del monorepo
 

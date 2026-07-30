@@ -24,7 +24,7 @@ export default function Login({ alEntrar }: { alEntrar: (usuario: Usuario) => vo
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100">
       <form onSubmit={entrar} className="w-full max-w-sm rounded-lg bg-white p-8 shadow-lg">
-        <h1 className="mb-1 text-center text-2xl font-bold">🛒 TPV Alimentación</h1>
+        <h1 className="mb-1 text-center text-2xl font-bold">🛒 Alimentación Miguel</h1>
         <p className="mb-6 text-center text-sm text-slate-500">Inicia sesión para abrir la caja</p>
         {error && <p className="mb-3 rounded bg-red-100 px-3 py-2 text-sm text-red-700">{error}</p>}
         <label className="mb-3 block">
