@@ -8,6 +8,7 @@ import {
   listarCategorias,
   mensajeDeError,
 } from '../api'
+import { useEsAdmin } from '../AuthContexto'
 import type { Categoria, Producto, ProductoEntrada, UnidadMedida } from '../tipos'
 
 const euros = (n: number) => n.toFixed(2).replace('.', ',') + ' €'
@@ -26,6 +27,7 @@ const formularioVacio: ProductoEntrada = {
 }
 
 export default function Productos() {
+  const esAdmin = useEsAdmin()
   const [productos, setProductos] = useState<Producto[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [texto, setTexto] = useState('')
@@ -138,12 +140,14 @@ export default function Productos() {
           <input type="checkbox" checked={incluirInactivos} onChange={(e) => setIncluirInactivos(e.target.checked)} />
           Ver dados de baja
         </label>
-        <button
-          onClick={abrirAlta}
-          className="ml-auto rounded-lg bg-amber-500 px-4 py-2 font-semibold text-white hover:bg-amber-600"
-        >
-          + Nuevo producto
-        </button>
+        {esAdmin && (
+          <button
+            onClick={abrirAlta}
+            className="ml-auto rounded-lg bg-amber-500 px-4 py-2 font-semibold text-white hover:bg-amber-600"
+          >
+            + Nuevo producto
+          </button>
+        )}
       </div>
 
       {error && !mostrarFormulario && <p className="mb-2 rounded bg-red-100 px-3 py-2 text-red-700">{error}</p>}
@@ -177,13 +181,17 @@ export default function Productos() {
                 </span>
               </td>
               <td className="p-3 text-right">
-                <button onClick={() => abrirEdicion(p)} className="mr-2 text-blue-600 hover:underline">
-                  Editar
-                </button>
-                {p.activo && (
-                  <button onClick={() => darDeBaja(p)} className="text-red-600 hover:underline">
-                    Baja
-                  </button>
+                {esAdmin && (
+                  <>
+                    <button onClick={() => abrirEdicion(p)} className="mr-2 text-blue-600 hover:underline">
+                      Editar
+                    </button>
+                    {p.activo && (
+                      <button onClick={() => darDeBaja(p)} className="text-red-600 hover:underline">
+                        Baja
+                      </button>
+                    )}
+                  </>
                 )}
               </td>
             </tr>

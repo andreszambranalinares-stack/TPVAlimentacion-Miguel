@@ -67,6 +67,20 @@ export default function Informes() {
         >
           Hoy
         </button>
+        <span className="ml-auto flex gap-2">
+          <a
+            href={`/api/informes/ventas.csv?desde=${desde}&hasta=${hasta}`}
+            className="rounded bg-slate-700 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-600"
+          >
+            ⬇ Ventas (CSV)
+          </a>
+          <a
+            href="/api/informes/inventario.csv"
+            className="rounded bg-slate-700 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-600"
+          >
+            ⬇ Inventario (CSV)
+          </a>
+        </span>
       </div>
 
       {error && <p className="rounded bg-red-100 px-3 py-2 text-red-700">{error}</p>}

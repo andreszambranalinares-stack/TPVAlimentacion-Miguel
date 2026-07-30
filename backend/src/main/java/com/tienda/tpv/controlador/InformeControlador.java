@@ -7,11 +7,15 @@ import com.tienda.tpv.servicio.InformeServicio;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -47,5 +51,28 @@ public class InformeControlador {
     @Operation(summary = "Valor del inventario activo a precio de coste y de venta")
     public ValorInventarioDTO valorInventario() {
         return informeServicio.valorInventario();
+    }
+
+    @GetMapping("/ventas.csv")
+    @Operation(summary = "Exportar las ventas del rango a CSV (sin parámetros: hoy)")
+    public ResponseEntity<byte[]> ventasCsv(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return respuestaCsv(informeServicio.ventasCsv(desde, hasta), "ventas.csv");
+    }
+
+    @GetMapping("/inventario.csv")
+    @Operation(summary = "Exportar el inventario activo con su valoración a CSV")
+    public ResponseEntity<byte[]> inventarioCsv() {
+        return respuestaCsv(informeServicio.inventarioCsv(), "inventario.csv");
+    }
+
+    private ResponseEntity<byte[]> respuestaCsv(String contenido, String nombreArchivo) {
+        // BOM UTF-8 para que Excel abra las tildes correctamente
+        byte[] cuerpo = ("\uFEFF" + contenido).getBytes(StandardCharsets.UTF_8);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nombreArchivo + "\"")
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .body(cuerpo);
     }
 }
