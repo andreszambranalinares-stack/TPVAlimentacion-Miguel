@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
+  esErrorDeSesionCaducada,
   informeVentas,
   listarVentas,
   mensajeDeError,
@@ -7,11 +8,9 @@ import {
   productosMasVendidos,
   valorInventario,
 } from '../api'
-import Ticket from '../componentes/Ticket'
+import TicketModal from '../componentes/TicketModal'
+import { euros, hoy } from '../utils'
 import type { InformeVentas, Producto, ProductoVendido, ValorInventario, Venta } from '../tipos'
-
-const euros = (n: number) => n.toFixed(2).replace('.', ',') + ' €'
-const hoy = () => new Date().toISOString().slice(0, 10)
 
 export default function Informes() {
   const [desde, setDesde] = useState(hoy())
@@ -23,9 +22,11 @@ export default function Informes() {
   const [ventas, setVentas] = useState<Venta[]>([])
   const [ticket, setTicket] = useState<Venta | null>(null)
   const [error, setError] = useState('')
+  const [cargando, setCargando] = useState(true)
 
   const cargar = useCallback(() => {
     setError('')
+    setCargando(true)
     Promise.all([
       informeVentas(desde, hasta),
       productosMasVendidos(desde, hasta),
@@ -40,7 +41,10 @@ export default function Informes() {
         setBajoMinimo(bajo)
         setVentas(listaVentas)
       })
-      .catch((e) => setError(mensajeDeError(e)))
+      .catch((e) => {
+        if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
+      })
+      .finally(() => setCargando(false))
   }, [desde, hasta])
 
   useEffect(cargar, [cargar])
@@ -129,7 +133,14 @@ export default function Informes() {
                   <td className="py-1.5 text-right">{euros(p.importeTotal)}</td>
                 </tr>
               ))}
-              {masVendidos.length === 0 && (
+              {cargando && (
+                <tr>
+                  <td colSpan={3} className="py-4 text-center text-slate-400">
+                    Cargando…
+                  </td>
+                </tr>
+              )}
+              {!cargando && masVendidos.length === 0 && (
                 <tr>
                   <td colSpan={3} className="py-4 text-center text-slate-400">
                     Sin ventas en el rango.
@@ -169,7 +180,10 @@ export default function Informes() {
                   </span>
                 </li>
               ))}
-              {bajoMinimo.length === 0 && <li className="py-2 text-slate-400">Todo el stock está por encima del mínimo.</li>}
+              {cargando && <li className="py-2 text-slate-400">Cargando…</li>}
+              {!cargando && bajoMinimo.length === 0 && (
+                <li className="py-2 text-slate-400">Todo el stock está por encima del mínimo.</li>
+              )}
             </ul>
           </div>
         </div>
@@ -203,7 +217,14 @@ export default function Informes() {
                 </td>
               </tr>
             ))}
-            {ventas.length === 0 && (
+            {cargando && (
+              <tr>
+                <td colSpan={6} className="py-4 text-center text-slate-400">
+                  Cargando…
+                </td>
+              </tr>
+            )}
+            {!cargando && ventas.length === 0 && (
               <tr>
                 <td colSpan={6} className="py-4 text-center text-slate-400">
                   Sin ventas en el rango.
@@ -215,25 +236,7 @@ export default function Informes() {
       </div>
 
       {ticket && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 print:bg-transparent">
-          <div className="max-h-[90vh] overflow-auto rounded-lg bg-white p-4 shadow-xl">
-            <Ticket venta={ticket} />
-            <div className="mt-4 flex gap-2 print:hidden">
-              <button
-                onClick={() => window.print()}
-                className="flex-1 rounded bg-slate-800 py-2 font-semibold text-white hover:bg-slate-700"
-              >
-                Imprimir
-              </button>
-              <button
-                onClick={() => setTicket(null)}
-                className="flex-1 rounded bg-slate-200 py-2 font-semibold hover:bg-slate-300"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
+        <TicketModal venta={ticket} colorBotonCerrar="slate" onCerrar={() => setTicket(null)} />
       )}
     </div>
   )

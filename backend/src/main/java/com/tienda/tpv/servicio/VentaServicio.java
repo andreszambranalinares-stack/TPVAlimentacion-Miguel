@@ -82,6 +82,7 @@ public class VentaServicio {
             venta.agregarLinea(linea);
 
             producto.setStockActual(producto.getStockActual().subtract(cantidad));
+            productoRepositorio.flush();
             total = total.add(subtotal);
             totalIva = totalIva.add(ivaLinea);
         }
@@ -113,9 +114,7 @@ public class VentaServicio {
     public List<VentaDTO> listar(LocalDate desde, LocalDate hasta) {
         LocalDate d = desde != null ? desde : LocalDate.now();
         LocalDate h = hasta != null ? hasta : d;
-        if (h.isBefore(d)) {
-            throw new ValidacionException("La fecha final no puede ser anterior a la inicial");
-        }
+        RangoFechasValidador.validar(d, h);
         LocalDateTime inicio = d.atStartOfDay();
         LocalDateTime fin = h.plusDays(1).atStartOfDay();
         return ventaRepositorio.findByFechaHoraBetweenOrderByFechaHoraDesc(inicio, fin).stream()

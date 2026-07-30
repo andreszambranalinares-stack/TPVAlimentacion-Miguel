@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { cerrarCaja, informeVentas, listarCierres, mensajeDeError } from '../api'
+import { cerrarCaja, esErrorDeSesionCaducada, informeVentas, listarCierres, mensajeDeError } from '../api'
+import { euros, hoy } from '../utils'
 import type { CierreCaja, InformeVentas } from '../tipos'
-
-const euros = (n: number) => n.toFixed(2).replace('.', ',') + ' €'
-const hoy = () => new Date().toISOString().slice(0, 10)
 
 /** Arqueo diario: comparar el efectivo contado con lo que dicen las ventas. */
 export default function Cierre() {
@@ -14,17 +12,22 @@ export default function Cierre() {
   const [notas, setNotas] = useState('')
   const [error, setError] = useState('')
   const [mensaje, setMensaje] = useState('')
+  const [cargando, setCargando] = useState(true)
 
   const cierreExistente = cierres.find((c) => c.fecha === fecha)
 
   const cargar = useCallback(() => {
     setError('')
+    setCargando(true)
     Promise.all([informeVentas(fecha, fecha), listarCierres()])
       .then(([r, lista]) => {
         setResumen(r)
         setCierres(lista)
       })
-      .catch((e) => setError(mensajeDeError(e)))
+      .catch((e) => {
+        if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
+      })
+      .finally(() => setCargando(false))
   }, [fecha])
 
   useEffect(cargar, [cargar])
@@ -43,7 +46,7 @@ export default function Cierre() {
       setNotas('')
       cargar()
     } catch (e) {
-      setError(mensajeDeError(e))
+      if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
     }
   }
 
@@ -177,7 +180,14 @@ export default function Cierre() {
                 </td>
               </tr>
             ))}
-            {cierres.length === 0 && (
+            {cargando && (
+              <tr>
+                <td colSpan={6} className="py-4 text-center text-slate-400">
+                  Cargando…
+                </td>
+              </tr>
+            )}
+            {!cargando && cierres.length === 0 && (
               <tr>
                 <td colSpan={6} className="py-4 text-center text-slate-400">
                   Todavía no hay cierres registrados.

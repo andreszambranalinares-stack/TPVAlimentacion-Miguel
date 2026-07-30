@@ -5,13 +5,13 @@ import {
   crearCategoria,
   crearProducto,
   desactivarProducto,
+  esErrorDeSesionCaducada,
   listarCategorias,
   mensajeDeError,
 } from '../api'
 import { useEsAdmin } from '../AuthContexto'
+import { euros } from '../utils'
 import type { Categoria, Producto, ProductoEntrada, UnidadMedida } from '../tipos'
-
-const euros = (n: number) => n.toFixed(2).replace('.', ',') + ' €'
 
 const formularioVacio: ProductoEntrada = {
   nombre: '',
@@ -34,6 +34,7 @@ export default function Productos() {
   const [categoriaId, setCategoriaId] = useState<number | ''>('')
   const [incluirInactivos, setIncluirInactivos] = useState(false)
   const [error, setError] = useState('')
+  const [cargando, setCargando] = useState(true)
 
   const [editando, setEditando] = useState<Producto | null>(null)
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
@@ -41,9 +42,13 @@ export default function Productos() {
   const [nuevaCategoria, setNuevaCategoria] = useState('')
 
   const cargar = useCallback(() => {
+    setCargando(true)
     buscarProductos(texto, categoriaId === '' ? undefined : categoriaId, incluirInactivos)
       .then(setProductos)
-      .catch((e) => setError(mensajeDeError(e)))
+      .catch((e) => {
+        if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
+      })
+      .finally(() => setCargando(false))
   }, [texto, categoriaId, incluirInactivos])
 
   useEffect(() => {
@@ -52,7 +57,11 @@ export default function Productos() {
   }, [cargar])
 
   useEffect(() => {
-    listarCategorias().then(setCategorias).catch(() => {})
+    listarCategorias()
+      .then(setCategorias)
+      .catch((e) => {
+        if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
+      })
   }, [])
 
   const abrirAlta = () => {
@@ -91,7 +100,7 @@ export default function Productos() {
       setMostrarFormulario(false)
       cargar()
     } catch (e) {
-      setError(mensajeDeError(e))
+      if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
     }
   }
 
@@ -109,7 +118,7 @@ export default function Productos() {
       setFormulario((f) => ({ ...f, categoriaId: creada.id }))
       setNuevaCategoria('')
     } catch (e) {
-      setError(mensajeDeError(e))
+      if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
     }
   }
 
@@ -196,7 +205,14 @@ export default function Productos() {
               </td>
             </tr>
           ))}
-          {productos.length === 0 && (
+          {cargando && (
+            <tr>
+              <td colSpan={7} className="p-6 text-center text-slate-400">
+                Cargando…
+              </td>
+            </tr>
+          )}
+          {!cargando && productos.length === 0 && (
             <tr>
               <td colSpan={7} className="p-6 text-center text-slate-400">
                 No hay productos que coincidan.

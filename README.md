@@ -52,8 +52,23 @@ La API exige sesión (login en `/api/auth/login`). Flyway siembra dos usuarios
 
 | Usuario | Contraseña | Rol    | Puede |
 |---------|------------|--------|-------|
-| `admin` | `admin123` | ADMIN  | todo: gestión de catálogo y proveedores, informes, cierre de caja |
-| `caja`  | `caja123`  | CAJERO | cobrar en caja, consultar productos y registrar movimientos de stock |
+| `admin` | `admin123` | ADMIN  | todo: gestión de catálogo y proveedores, informes, cierre de caja, ajustes manuales de stock |
+| `caja`  | `caja123`  | CAJERO | cobrar en caja, consultar productos, registrar entradas y mermas de stock |
+
+El login se bloquea 15 minutos tras 5 intentos fallidos seguidos con el mismo
+usuario (protección simple en memoria contra fuerza bruta).
+
+## Fiabilidad y seguridad
+
+- **Bloqueo optimista de stock** (`Producto.version`): si dos ventas o
+  movimientos concurrentes intentan tocar el mismo producto, el segundo en
+  confirmar recibe un 409 `CONFLICTO_CONCURRENCIA` en vez de sobrescribir
+  silenciosamente el stock (evita vender más unidades de las que quedan).
+- **AJUSTE de stock reservado a ADMIN**: ENTRADA (recepción de pedidos) y
+  MERMA (roturas/caducados) siguen abiertos a cualquier usuario; el ajuste
+  manual de un recuento de inventario requiere rol ADMIN.
+- **Rango de fechas limitado a 366 días** en `/api/ventas` y `/api/informes/*`
+  para evitar consultas sin límite sobre años de histórico.
 
 ## Cierre de caja y exportación
 
@@ -88,6 +103,7 @@ npm run build                # compila TypeScript y genera dist/
 |--------|---------------|-----|
 | `dev`  | PostgreSQL local (`jdbc:postgresql://localhost:5432/tpv`) | desarrollo (activo por defecto) |
 | `test` | H2 en memoria en modo PostgreSQL | tests automáticos |
+| `prod` | (combinar con `dev` o un perfil de datos propio) | desactiva Swagger/OpenAPI y exige cookies solo por HTTPS; actívalo con `SPRING_PROFILES_ACTIVE=prod,dev` |
 
 ## Estado del proyecto
 
@@ -98,3 +114,4 @@ npm run build                # compila TypeScript y genera dist/
 - [x] Fase 5 — Frontend: pantalla de caja (teclado/escáner)
 - [x] Fase 6 — Informes, control de stock y ticket imprimible
 - [x] Mejoras — Autenticación con roles (ADMIN/CAJERO), cierre de caja diario y exportación CSV
+- [x] Revisión — Bloqueo optimista de stock, permisos de AJUSTE, límite de intentos de login, validaciones y correcciones de UX en caja

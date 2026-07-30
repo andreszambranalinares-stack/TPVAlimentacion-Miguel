@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -101,5 +102,41 @@ class MovimientoStockApiTest {
                         .content(movimientoJson("ENTRADA", "-3", "Error")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.codigo").value("VALIDACION"));
+    }
+
+    @Test
+    void mermaQueDejaElStockExactamenteEnCeroSePermite() throws Exception {
+        mockMvc.perform(post("/api/movimientos-stock")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(movimientoJson("MERMA", "5", "Caducado todo el lote")))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/productos/" + productoId))
+                .andExpect(jsonPath("$.stockActual").value(0));
+    }
+
+    @Test
+    void elCajeroNoPuedeRegistrarUnAjuste() throws Exception {
+        // El producto se crea como ADMIN (BeforeEach); solo este POST se hace como CAJERO
+        mockMvc.perform(post("/api/movimientos-stock")
+                        .with(user("cajero_test").roles("CAJERO"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(movimientoJson("AJUSTE", "-1", "Recuento manual")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("SIN_PERMISOS"));
+    }
+
+    @Test
+    void elCajeroSiPuedeRegistrarEntradasYMermas() throws Exception {
+        mockMvc.perform(post("/api/movimientos-stock")
+                        .with(user("cajero_test").roles("CAJERO"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(movimientoJson("ENTRADA", "3", "Pedido recibido")))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/movimientos-stock")
+                        .with(user("cajero_test").roles("CAJERO"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(movimientoJson("MERMA", "1", "Envase roto")))
+                .andExpect(status().isCreated());
     }
 }

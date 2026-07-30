@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { crearProveedor, eliminarProveedor, listarProveedores, mensajeDeError } from '../api'
+import { crearProveedor, eliminarProveedor, esErrorDeSesionCaducada, listarProveedores, mensajeDeError } from '../api'
 import type { Proveedor } from '../tipos'
 
 export default function Proveedores() {
@@ -8,9 +8,16 @@ export default function Proveedores() {
   const [telefono, setTelefono] = useState('')
   const [contacto, setContacto] = useState('')
   const [error, setError] = useState('')
+  const [cargando, setCargando] = useState(true)
 
   const cargar = () => {
-    listarProveedores().then(setProveedores).catch((e) => setError(mensajeDeError(e)))
+    setCargando(true)
+    listarProveedores()
+      .then(setProveedores)
+      .catch((e) => {
+        if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
+      })
+      .finally(() => setCargando(false))
   }
 
   useEffect(cargar, [])
@@ -25,7 +32,7 @@ export default function Proveedores() {
       setContacto('')
       cargar()
     } catch (e) {
-      setError(mensajeDeError(e))
+      if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
     }
   }
 
@@ -86,7 +93,14 @@ export default function Proveedores() {
               </td>
             </tr>
           ))}
-          {proveedores.length === 0 && (
+          {cargando && (
+            <tr>
+              <td colSpan={4} className="p-6 text-center text-slate-400">
+                Cargando…
+              </td>
+            </tr>
+          )}
+          {!cargando && proveedores.length === 0 && (
             <tr>
               <td colSpan={4} className="p-6 text-center text-slate-400">
                 Sin proveedores todavía.

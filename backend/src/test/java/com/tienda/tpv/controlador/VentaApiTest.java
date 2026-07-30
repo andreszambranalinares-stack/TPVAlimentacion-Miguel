@@ -145,4 +145,51 @@ class VentaApiTest {
                 .andExpect(jsonPath("$[0].nombre").value("Refresco de cola 33cl"))
                 .andExpect(jsonPath("$[0].cantidadVendida").value(3));
     }
+
+    @Test
+    void ventaFraccionariaDeProductoPorPesoDescuentaCorrectamente() throws Exception {
+        MvcResult creado = mockMvc.perform(post("/api/productos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nombre": "Jamón cocido",
+                                  "precioVenta": 2.00,
+                                  "ivaPorcentaje": 4,
+                                  "stockInicial": 5,
+                                  "unidadMedida": "KG"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long idJamon = objectMapper.readTree(creado.getResponse().getContentAsString()).get("id").asLong();
+
+        mockMvc.perform(post("/api/ventas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(ventaJson(idJamon, "0.5")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.total").value(1.00))
+                .andExpect(jsonPath("$.lineas[0].subtotal").value(1.00));
+
+        mockMvc.perform(get("/api/productos/" + idJamon))
+                .andExpect(jsonPath("$.stockActual").value(4.5));
+
+        MvcResult movimientos = mockMvc.perform(get("/api/movimientos-stock")
+                        .param("productoId", String.valueOf(idJamon)))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode salida = objectMapper.readTree(movimientos.getResponse().getContentAsString()).get(0);
+        assertThat(salida.get("cantidad").decimalValue()).isEqualByComparingTo("-0.5");
+    }
+
+    @Test
+    void ventaQueDejaElStockExactamenteEnCeroSePermite() throws Exception {
+        mockMvc.perform(post("/api/ventas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(ventaJson(productoId, "10")))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/productos/" + productoId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stockActual").value(0));
+    }
 }

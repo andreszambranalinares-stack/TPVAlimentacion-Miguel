@@ -1,6 +1,8 @@
+import axios from 'axios'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { buscarProductos, crearVenta, mensajeDeError, productoPorCodigoBarras } from '../api'
-import Ticket from '../componentes/Ticket'
+import { buscarProductos, crearVenta, esErrorDeSesionCaducada, mensajeDeError, productoPorCodigoBarras } from '../api'
+import TicketModal from '../componentes/TicketModal'
+import { euros } from '../utils'
 import type { MetodoPago, Producto, Venta } from '../tipos'
 
 interface LineaCarrito {
@@ -8,7 +10,6 @@ interface LineaCarrito {
   cantidad: number
 }
 
-const euros = (n: number) => n.toFixed(2).replace('.', ',') + ' €'
 const pareceCodigoBarras = (texto: string) => /^\d{6,}$/.test(texto.trim())
 
 /**
@@ -20,10 +21,14 @@ export default function Caja() {
   const [resultados, setResultados] = useState<Producto[]>([])
   const [indice, setIndice] = useState(0)
   const [carrito, setCarrito] = useState<LineaCarrito[]>([])
+  const [textoCantidad, setTextoCantidad] = useState<Record<number, string>>({})
   const [error, setError] = useState('')
   const [cobrando, setCobrando] = useState(false)
   const [ticket, setTicket] = useState<Venta | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  // Búsqueda que corresponde a los `resultados` mostrados; evita añadir un
+  // producto de una lista de sugerencias ya obsoleta si el usuario teclea rápido.
+  const ultimaConsultaRef = useRef('')
 
   const enfocarBuscador = () => inputRef.current?.focus()
 
@@ -39,15 +44,23 @@ export default function Caja() {
       setIndice(0)
       return
     }
+    const controlador = new AbortController()
     const temporizador = setTimeout(() => {
-      buscarProductos(texto)
+      buscarProductos(texto, undefined, undefined, controlador.signal)
         .then((lista) => {
+          ultimaConsultaRef.current = texto
           setResultados(lista.slice(0, 8))
           setIndice(0)
         })
-        .catch(() => setResultados([]))
+        .catch((e) => {
+          if (axios.isCancel(e)) return
+          setResultados([])
+        })
     }, 150)
-    return () => clearTimeout(temporizador)
+    return () => {
+      clearTimeout(temporizador)
+      controlador.abort()
+    }
   }, [busqueda])
 
   const agregarAlCarrito = useCallback((producto: Producto) => {
@@ -64,9 +77,17 @@ export default function Caja() {
     enfocarBuscador()
   }, [])
 
+  const quitarTextoCantidad = (productoId: number) => {
+    setTextoCantidad((actual) => {
+      const { [productoId]: _omitido, ...resto } = actual
+      return resto
+    })
+  }
+
   const cambiarCantidad = (productoId: number, cantidad: number) => {
     if (cantidad <= 0) {
       setCarrito((actual) => actual.filter((l) => l.producto.id !== productoId))
+      quitarTextoCantidad(productoId)
     } else {
       setCarrito((actual) => actual.map((l) => (l.producto.id === productoId ? { ...l, cantidad } : l)))
     }
@@ -88,10 +109,10 @@ export default function Caja() {
         try {
           agregarAlCarrito(await productoPorCodigoBarras(texto))
         } catch (e) {
-          setError(mensajeDeError(e))
+          if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
           setBusqueda('')
         }
-      } else if (resultados[indice]) {
+      } else if (resultados[indice] && ultimaConsultaRef.current === texto) {
         agregarAlCarrito(resultados[indice])
       }
     } else if (evento.key === 'Escape') {
@@ -112,8 +133,9 @@ export default function Caja() {
         })
         setTicket(venta)
         setCarrito([])
+        setTextoCantidad({})
       } catch (e) {
-        setError(mensajeDeError(e))
+        if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
       } finally {
         setCobrando(false)
       }
@@ -141,6 +163,7 @@ export default function Caja() {
       } else if (evento.key === 'F4') {
         evento.preventDefault()
         setCarrito([])
+        setTextoCantidad({})
         enfocarBuscador()
       }
     }
@@ -167,14 +190,25 @@ export default function Caja() {
             onChange={(e) => setBusqueda(e.target.value)}
             onKeyDown={alPulsarTecla}
             placeholder="Escanea un código de barras o escribe el nombre y pulsa Enter…"
-            className="w-full rounded-lg border-2 border-slate-300 p-4 text-lg shadow focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-lg border-2 border-slate-300 p-4 text-lg shadow focus:border-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-300"
             autoComplete="off"
+            aria-label="Buscar producto por nombre o código de barras"
+            role="combobox"
+            aria-expanded={resultados.length > 0}
+            aria-controls="resultados-busqueda-caja"
           />
           {resultados.length > 0 && (
-            <ul className="absolute z-10 mt-1 w-full rounded-lg border bg-white shadow-lg">
+            <ul
+              id="resultados-busqueda-caja"
+              role="listbox"
+              aria-label="Resultados de búsqueda"
+              className="absolute z-10 mt-1 w-full rounded-lg border bg-white shadow-lg"
+            >
               {resultados.map((p, i) => (
                 <li
                   key={p.id}
+                  role="option"
+                  aria-selected={i === indice}
                   onMouseDown={() => agregarAlCarrito(p)}
                   className={`flex cursor-pointer justify-between px-4 py-2 ${i === indice ? 'bg-amber-100' : 'hover:bg-slate-50'}`}
                 >
@@ -189,7 +223,11 @@ export default function Caja() {
           )}
         </div>
 
-        {error && <p className="mt-2 rounded bg-red-100 px-3 py-2 text-red-700">{error}</p>}
+        {error && (
+          <p role="alert" className="mt-2 rounded bg-red-100 px-3 py-2 text-red-700">
+            {error}
+          </p>
+        )}
 
         <table className="mt-4 w-full rounded-lg bg-white shadow">
           <thead>
@@ -217,6 +255,7 @@ export default function Caja() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => cambiarCantidad(l.producto.id, l.cantidad - 1)}
+                      aria-label={`Disminuir cantidad de ${l.producto.nombre}`}
                       className="h-7 w-7 rounded bg-slate-200 font-bold hover:bg-slate-300"
                     >
                       −
@@ -225,12 +264,34 @@ export default function Caja() {
                       type="number"
                       min="0"
                       step={l.producto.unidadMedida === 'UNIDAD' ? 1 : 0.001}
-                      value={l.cantidad}
-                      onChange={(e) => cambiarCantidad(l.producto.id, Number(e.target.value))}
+                      value={textoCantidad[l.producto.id] ?? String(l.cantidad)}
+                      onChange={(e) => {
+                        const texto = e.target.value
+                        setTextoCantidad((actual) => ({ ...actual, [l.producto.id]: texto }))
+                        const numero = Number(texto)
+                        if (texto !== '' && !Number.isNaN(numero) && numero > 0) {
+                          setCarrito((actual) =>
+                            actual.map((linea) =>
+                              linea.producto.id === l.producto.id ? { ...linea, cantidad: numero } : linea,
+                            ),
+                          )
+                        }
+                      }}
+                      onBlur={() => {
+                        const texto = textoCantidad[l.producto.id]
+                        if (texto === undefined) return
+                        const numero = Number(texto)
+                        if (texto === '' || Number.isNaN(numero) || numero <= 0) {
+                          cambiarCantidad(l.producto.id, 0)
+                        }
+                        quitarTextoCantidad(l.producto.id)
+                      }}
+                      aria-label={`Cantidad de ${l.producto.nombre}`}
                       className="w-20 rounded border p-1 text-center"
                     />
                     <button
                       onClick={() => cambiarCantidad(l.producto.id, l.cantidad + 1)}
+                      aria-label={`Aumentar cantidad de ${l.producto.nombre}`}
                       className="h-7 w-7 rounded bg-slate-200 font-bold hover:bg-slate-300"
                     >
                       +
@@ -241,6 +302,7 @@ export default function Caja() {
                 <td className="p-3 text-right">
                   <button
                     onClick={() => cambiarCantidad(l.producto.id, 0)}
+                    aria-label={`Quitar ${l.producto.nombre} del carrito`}
                     className="rounded px-2 py-1 text-red-600 hover:bg-red-50"
                   >
                     ✕
@@ -283,6 +345,7 @@ export default function Caja() {
           <button
             onClick={() => {
               setCarrito([])
+              setTextoCantidad({})
               enfocarBuscador()
             }}
             disabled={carrito.length === 0}
@@ -294,28 +357,14 @@ export default function Caja() {
       </div>
 
       {ticket && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 print:bg-transparent">
-          <div className="max-h-[90vh] overflow-auto rounded-lg bg-white p-4 shadow-xl">
-            <Ticket venta={ticket} />
-            <div className="mt-4 flex gap-2 print:hidden">
-              <button
-                onClick={() => window.print()}
-                className="flex-1 rounded bg-slate-800 py-2 font-semibold text-white hover:bg-slate-700"
-              >
-                Imprimir
-              </button>
-              <button
-                onClick={() => {
-                  setTicket(null)
-                  setTimeout(enfocarBuscador, 0)
-                }}
-                className="flex-1 rounded bg-amber-500 py-2 font-semibold text-white hover:bg-amber-600"
-              >
-                Nueva venta (Enter)
-              </button>
-            </div>
-          </div>
-        </div>
+        <TicketModal
+          venta={ticket}
+          textoBotonCerrar="Nueva venta (Enter)"
+          onCerrar={() => {
+            setTicket(null)
+            setTimeout(enfocarBuscador, 0)
+          }}
+        />
       )}
     </div>
   )

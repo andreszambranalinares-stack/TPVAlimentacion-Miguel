@@ -1,0 +1,13 @@
+# Perfil de producción: desactiva Swagger/OpenAPI y exige cookies solo por HTTPS.
+# Actívalo con SPRING_PROFILES_ACTIVE=prod,dev (o el perfil de datos que corresponda).
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: true
