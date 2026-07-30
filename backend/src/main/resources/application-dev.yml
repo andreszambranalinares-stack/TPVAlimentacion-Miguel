@@ -1,0 +1,8 @@
+# Perfil de desarrollo: PostgreSQL local
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/tpv
+    username: tpv
+    password: tpv
+  flyway:
+    locations: classpath:db/migration
