@@ -55,7 +55,7 @@ mvn test                     # tests con perfil test (H2 en memoria)
 ## Estado del proyecto
 
 - [x] Fase 1 — Monorepo, configuración, esquema Flyway, entidades JPA y repositorios
-- [ ] Fase 2 — Servicios y controladores de Productos y Categorías + Swagger + tests
+- [x] Fase 2 — Servicios y controladores de Productos y Categorías + Swagger + tests
 - [ ] Fase 3 — Lógica de ventas (validación y descuento de stock, movimientos)
 - [ ] Fase 4 — Frontend: layout + gestión de productos
 - [ ] Fase 5 — Frontend: pantalla de caja (teclado/escáner)
