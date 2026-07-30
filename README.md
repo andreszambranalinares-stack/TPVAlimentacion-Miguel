@@ -45,6 +45,25 @@ mvn test                     # tests con perfil test (H2 en memoria)
 - API REST bajo `http://localhost:8080/api`
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 
+## Usuarios y roles
+
+La API exige sesión (login en `/api/auth/login`). Flyway siembra dos usuarios
+(**cámbialos en producción**; los hashes son BCrypt en la tabla `usuario`):
+
+| Usuario | Contraseña | Rol    | Puede |
+|---------|------------|--------|-------|
+| `admin` | `admin123` | ADMIN  | todo: gestión de catálogo y proveedores, informes, cierre de caja |
+| `caja`  | `caja123`  | CAJERO | cobrar en caja, consultar productos y registrar movimientos de stock |
+
+## Cierre de caja y exportación
+
+- **Cierre de caja** (`/api/cierres-caja`, pestaña «Cierre»): al final del día se
+  introduce el efectivo contado en el cajón y se guarda el arqueo con la
+  diferencia frente a lo esperado según las ventas. Solo un cierre por fecha.
+- **Exportación CSV** (botones en «Informes»): `/api/informes/ventas.csv` y
+  `/api/informes/inventario.csv`, listos para abrir en Excel (separador `;`,
+  decimales con coma, UTF-8 con BOM).
+
 ## Frontend
 
 ```bash
@@ -78,3 +97,4 @@ npm run build                # compila TypeScript y genera dist/
 - [x] Fase 4 — Frontend: layout + gestión de productos
 - [x] Fase 5 — Frontend: pantalla de caja (teclado/escáner)
 - [x] Fase 6 — Informes, control de stock y ticket imprimible
+- [x] Mejoras — Autenticación con roles (ADMIN/CAJERO), cierre de caja diario y exportación CSV

@@ -100,6 +100,27 @@ export interface ValorInventario {
   valorVenta: number
 }
 
+export type RolUsuario = 'ADMIN' | 'CAJERO'
+
+export interface Usuario {
+  nombreUsuario: string
+  nombre: string
+  rol: RolUsuario
+}
+
+export interface CierreCaja {
+  id: number
+  fecha: string
+  numeroVentas: number
+  totalVentas: number
+  totalEfectivo: number
+  totalTarjeta: number
+  efectivoContado: number
+  diferencia: number
+  notas: string | null
+  fechaHora: string
+}
+
 export interface ErrorApi {
   codigo: string
   mensaje: string

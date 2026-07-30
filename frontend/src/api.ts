@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios'
 import type {
   Categoria,
+  CierreCaja,
   ErrorApi,
   InformeVentas,
   MovimientoStock,
@@ -9,12 +10,24 @@ import type {
   ProductoVendido,
   Proveedor,
   TipoMovimiento,
+  Usuario,
   ValorInventario,
   Venta,
   VentaEntrada,
 } from './tipos'
 
 const api = axios.create({ baseURL: '/api' })
+
+// Si la sesión caduca, avisamos a la aplicación para volver al login
+api.interceptors.response.use(
+  (respuesta) => respuesta,
+  (error: AxiosError) => {
+    if (error.response?.status === 401 && !error.config?.url?.startsWith('/auth')) {
+      window.dispatchEvent(new Event('sesion-caducada'))
+    }
+    return Promise.reject(error)
+  },
+)
 
 /** Extrae el mensaje de error con el formato {codigo, mensaje, detalles} de la API. */
 export function mensajeDeError(error: unknown): string {
@@ -25,6 +38,20 @@ export function mensajeDeError(error: unknown): string {
   }
   return datos?.mensaje ?? 'Error de conexión con el servidor'
 }
+
+// Autenticación
+export const iniciarSesion = (nombreUsuario: string, password: string) =>
+  api.post<Usuario>('/auth/login', { nombreUsuario, password }).then((r) => r.data)
+
+export const cerrarSesion = () => api.post('/auth/logout')
+
+export const usuarioActual = () => api.get<Usuario>('/auth/yo').then((r) => r.data)
+
+// Cierre de caja
+export const cerrarCaja = (datos: { fecha?: string; efectivoContado: number; notas: string }) =>
+  api.post<CierreCaja>('/cierres-caja', datos).then((r) => r.data)
+
+export const listarCierres = () => api.get<CierreCaja[]>('/cierres-caja').then((r) => r.data)
 
 // Productos
 export const buscarProductos = (texto?: string, categoriaId?: number, incluirInactivos = false) =>

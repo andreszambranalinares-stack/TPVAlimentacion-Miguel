@@ -83,6 +83,61 @@ public class InformeServicio {
                 venta.setScale(2, RoundingMode.HALF_UP));
     }
 
+    /** CSV de ventas del rango, con separador ';' y decimales con coma (Excel en español). */
+    public String ventasCsv(LocalDate desde, LocalDate hasta) {
+        LocalDate d = desde != null ? desde : LocalDate.now();
+        LocalDate h = hasta != null ? hasta : d;
+        validarRango(d, h);
+
+        StringBuilder csv = new StringBuilder("Ticket;Fecha;Hora;Método de pago;Total;IVA incluido\n");
+        List<Venta> ventas = ventaRepositorio.findByFechaHoraBetweenOrderByFechaHoraDesc(
+                d.atStartOfDay(), h.plusDays(1).atStartOfDay());
+        for (Venta venta : ventas) {
+            csv.append(venta.getId()).append(';')
+                    .append(venta.getFechaHora().toLocalDate()).append(';')
+                    .append(venta.getFechaHora().toLocalTime().withNano(0)).append(';')
+                    .append(venta.getMetodoPago()).append(';')
+                    .append(decimalEspanol(venta.getTotal())).append(';')
+                    .append(decimalEspanol(venta.getTotalIva())).append('\n');
+        }
+        return csv.toString();
+    }
+
+    /** CSV del inventario activo con su valoración. */
+    public String inventarioCsv() {
+        StringBuilder csv = new StringBuilder(
+                "Producto;Código de barras;Categoría;Unidad;Stock;Stock mínimo;Precio coste;PVP;Valor a coste;Valor a PVP\n");
+        List<Producto> activos = productoRepositorio.findAll().stream()
+                .filter(Producto::isActivo)
+                .sorted((a, b) -> a.getNombre().compareToIgnoreCase(b.getNombre()))
+                .toList();
+        for (Producto p : activos) {
+            csv.append(escaparCsv(p.getNombre())).append(';')
+                    .append(p.getCodigoBarras() != null ? p.getCodigoBarras() : "").append(';')
+                    .append(p.getCategoria() != null ? escaparCsv(p.getCategoria().getNombre()) : "").append(';')
+                    .append(p.getUnidadMedida()).append(';')
+                    .append(decimalEspanol(p.getStockActual())).append(';')
+                    .append(decimalEspanol(p.getStockMinimo())).append(';')
+                    .append(decimalEspanol(p.getPrecioCoste())).append(';')
+                    .append(decimalEspanol(p.getPrecioVenta())).append(';')
+                    .append(decimalEspanol(p.getStockActual().multiply(p.getPrecioCoste())
+                            .setScale(2, RoundingMode.HALF_UP))).append(';')
+                    .append(decimalEspanol(p.getStockActual().multiply(p.getPrecioVenta())
+                            .setScale(2, RoundingMode.HALF_UP))).append('\n');
+        }
+        return csv.toString();
+    }
+
+    private String decimalEspanol(BigDecimal valor) {
+        return valor.toPlainString().replace('.', ',');
+    }
+
+    private String escaparCsv(String texto) {
+        return texto.contains(";") || texto.contains("\"")
+                ? '"' + texto.replace("\"", "\"\"") + '"'
+                : texto;
+    }
+
     private void validarRango(LocalDate desde, LocalDate hasta) {
         if (hasta.isBefore(desde)) {
             throw new ValidacionException("La fecha final no puede ser anterior a la inicial");
