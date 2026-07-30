@@ -31,6 +31,12 @@ public class ManejadorGlobalErrores {
         return new ErrorRespuesta("CONFLICTO", ex.getMessage());
     }
 
+    @ExceptionHandler(StockInsuficienteException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorRespuesta stockInsuficiente(StockInsuficienteException ex) {
+        return new ErrorRespuesta("STOCK_INSUFICIENTE", ex.getMessage());
+    }
+
     @ExceptionHandler(ValidacionException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorRespuesta validacion(ValidacionException ex) {
