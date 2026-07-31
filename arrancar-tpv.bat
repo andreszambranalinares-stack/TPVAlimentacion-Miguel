@@ -43,15 +43,18 @@ start "TPV - Pantalla (no cerrar)" cmd /k "cd /d "%~dp0frontend" && npm run dev"
 REM --- 4. Esperar a que el motor Y la pantalla respondan, y abrir el navegador
 REM IMPORTANTE: hay que esperar a los DOS puertos (8080 motor, 5173 pantalla).
 REM La pantalla arranca casi al instante, pero el motor (Java) tarda más,
-REM sobre todo la primera vez que hay dependencias nuevas que descargar.
-REM Si solo se espera a la pantalla, el navegador se abre antes de que el
-REM motor esté listo y salen errores "ECONNREFUSED" en la consola hasta que
-REM termina de arrancar (no son un fallo real, solo hay que esperar más).
-echo   [4/4] Esperando a que el motor y la pantalla arranquen (puede tardar 1-2 minutos)...
+REM sobre todo la primerísima vez: Maven tiene que descargarse TODAS las
+REM librerías (no solo las nuevas), y eso puede tardar varios minutos según
+REM la conexión a internet de la tienda. Le damos hasta 10 minutos y vamos
+REM avisando cada 15 segundos para que no parezca que se ha quedado colgado.
+echo   [4/4] Esperando a que el motor y la pantalla arranquen...
+echo   ^(la primera vez puede tardar varios minutos: Maven se descarga las librerías^)
 set /a intentos=0
 :esperar
 set /a intentos+=1
-if %intentos% gtr 180 goto sinrespuesta
+set /a resto=intentos %% 15
+if %intentos% gtr 1 if %resto%==0 echo   ...todavía arrancando, un momento más ^(%intentos% segundos^)...
+if %intentos% gtr 600 goto sinrespuesta
 powershell -NoProfile -Command "try { $m = New-Object System.Net.Sockets.TcpClient; $m.Connect('localhost',8080); $m.Close(); $p = New-Object System.Net.Sockets.TcpClient; $p.Connect('localhost',5173); $p.Close(); exit 0 } catch { exit 1 }" >nul 2>&1
 if errorlevel 1 (
     timeout /t 1 /nobreak >nul
@@ -70,8 +73,10 @@ exit /b 0
 
 :sinrespuesta
 echo.
-echo   La aplicacion tarda mas de lo normal en arrancar.
+echo   La aplicacion tarda mucho mas de lo normal en arrancar ^(mas de 10 minutos^).
 echo   Mira la ventana "TPV - Motor" a ver si muestra algun error.
+echo   Probamos igualmente a abrir el navegador, por si ya esta casi lista:
+start "" "http://localhost:5173"
 echo.
 pause
 exit /b 1
