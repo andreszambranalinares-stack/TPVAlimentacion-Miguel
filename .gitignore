@@ -2,7 +2,7 @@
 backend/target/
 *.class
 *.jar
-!.mvn/wrapper/maven-wrapper.jar
+!**/.mvn/wrapper/maven-wrapper.jar
 
 # Frontend (Node)
 frontend/node_modules/
