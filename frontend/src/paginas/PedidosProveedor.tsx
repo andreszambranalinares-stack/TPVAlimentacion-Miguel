@@ -11,7 +11,7 @@ import {
   recibirPedidoProveedor,
 } from '../api'
 import { useEsAdmin } from '../AuthContexto'
-import { euros } from '../utils'
+import { euros, seleccionarAlFoco } from '../utils'
 import type { EstadoPedido, PedidoProveedor, Producto, Proveedor } from '../tipos'
 
 const nombresEstado: Record<EstadoPedido, string> = {
@@ -305,6 +305,7 @@ export default function PedidosProveedor() {
                             disabled={l.cantidadPendiente <= 0}
                             value={cantidadesRecibir[l.id] ?? ''}
                             onChange={(e) => setCantidadesRecibir((actual) => ({ ...actual, [l.id]: e.target.value }))}
+                            onFocus={seleccionarAlFoco}
                             aria-label={`Cantidad recibida de ${l.productoNombre}`}
                             className="w-20 rounded border p-1 text-center disabled:bg-slate-100"
                           />
@@ -386,6 +387,7 @@ export default function PedidosProveedor() {
                   step="any"
                   value={cantidadAAgregar}
                   onChange={(e) => setCantidadAAgregar(e.target.value)}
+                  onFocus={seleccionarAlFoco}
                   className={campo}
                 />
               </label>
@@ -397,6 +399,7 @@ export default function PedidosProveedor() {
                   step="0.01"
                   value={costeAAgregar}
                   onChange={(e) => setCosteAAgregar(e.target.value)}
+                  onFocus={seleccionarAlFoco}
                   className={campo}
                 />
               </label>

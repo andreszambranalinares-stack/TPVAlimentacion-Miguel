@@ -10,7 +10,7 @@ import {
   mensajeDeError,
 } from '../api'
 import { useEsAdmin } from '../AuthContexto'
-import { euros, normalizarTexto, parsearProductosCsv } from '../utils'
+import { euros, normalizarTexto, parsearProductosCsv, seleccionarAlFoco } from '../utils'
 import type { Categoria, Producto, ProductoEntrada, UnidadMedida } from '../tipos'
 
 interface ResultadoImportacion {
@@ -418,6 +418,7 @@ export default function Productos() {
                   step="0.01"
                   value={formulario.precioVenta}
                   onChange={(e) => setFormulario({ ...formulario, precioVenta: Number(e.target.value) })}
+                  onFocus={seleccionarAlFoco}
                   className={campo}
                 />
               </label>
@@ -431,6 +432,7 @@ export default function Productos() {
                   onChange={(e) =>
                     setFormulario({ ...formulario, precioCoste: e.target.value === '' ? null : Number(e.target.value) })
                   }
+                  onFocus={seleccionarAlFoco}
                   className={campo}
                 />
               </label>
@@ -470,6 +472,7 @@ export default function Productos() {
                   onChange={(e) =>
                     setFormulario({ ...formulario, stockMinimo: e.target.value === '' ? null : Number(e.target.value) })
                   }
+                  onFocus={seleccionarAlFoco}
                   className={campo}
                 />
               </label>
@@ -484,6 +487,7 @@ export default function Productos() {
                     onChange={(e) =>
                       setFormulario({ ...formulario, stockInicial: e.target.value === '' ? null : Number(e.target.value) })
                     }
+                    onFocus={seleccionarAlFoco}
                     className={campo}
                   />
                 </label>
@@ -554,6 +558,7 @@ export default function Productos() {
                       step="any"
                       value={cantidadComponente}
                       onChange={(e) => setCantidadComponente(e.target.value)}
+                      onFocus={seleccionarAlFoco}
                       className={campo}
                     />
                   </label>

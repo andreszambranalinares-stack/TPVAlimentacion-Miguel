@@ -1,3 +1,4 @@
+import type { FocusEvent } from 'react'
 import type { ProductoEntrada, UnidadMedida } from './tipos'
 
 export const euros = (n: number) => n.toFixed(2).replace('.', ',') + ' €'
@@ -5,6 +6,13 @@ export const euros = (n: number) => n.toFixed(2).replace('.', ',') + ' €'
 export const hoy = () => new Date().toISOString().slice(0, 10)
 
 export const pareceCodigoBarras = (texto: string) => /^\d{6,}$/.test(texto.trim())
+
+/**
+ * Para inputs numéricos: selecciona todo el contenido al enfocar, para que
+ * el primer dígito que se teclee sustituya al 0 (u otro valor) en vez de
+ * añadirse detrás.
+ */
+export const seleccionarAlFoco = (e: FocusEvent<HTMLInputElement>) => e.target.select()
 
 /** Cabeceras aceptadas por columna, en minúsculas y sin acentos. */
 const CABECERAS: Record<string, string[]> = {

@@ -11,7 +11,7 @@ import {
 import CobroEfectivoModal from '../componentes/CobroEfectivoModal'
 import TicketModal from '../componentes/TicketModal'
 import { useEsAdmin } from '../AuthContexto'
-import { euros, pareceCodigoBarras } from '../utils'
+import { euros, pareceCodigoBarras, seleccionarAlFoco } from '../utils'
 import type { MetodoPago, Producto, Venta } from '../tipos'
 
 interface LineaCarrito {
@@ -465,6 +465,7 @@ export default function Caja() {
                         }
                         quitarTextoCantidad(l.producto.id)
                       }}
+                      onFocus={seleccionarAlFoco}
                       aria-label={`Cantidad de ${l.producto.nombre}`}
                       className="w-20 rounded border p-1 text-center"
                     />
@@ -486,6 +487,7 @@ export default function Caja() {
                       step="1"
                       value={l.descuentoPorcentaje}
                       onChange={(e) => cambiarDescuento(l.producto.id, Number(e.target.value))}
+                      onFocus={seleccionarAlFoco}
                       aria-label={`Descuento en % para ${l.producto.nombre}`}
                       className="w-16 rounded border p-1 text-center"
                     />
