@@ -3,7 +3,9 @@ package com.tienda.tpv.servicio;
 import com.tienda.tpv.dominio.Proveedor;
 import com.tienda.tpv.dto.ProveedorDTO;
 import com.tienda.tpv.dto.ProveedorEntradaDTO;
+import com.tienda.tpv.excepciones.ConflictoException;
 import com.tienda.tpv.excepciones.RecursoNoEncontradoException;
+import com.tienda.tpv.repositorio.PedidoProveedorRepositorio;
 import com.tienda.tpv.repositorio.ProveedorRepositorio;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -16,9 +18,12 @@ import java.util.List;
 public class ProveedorServicio {
 
     private final ProveedorRepositorio proveedorRepositorio;
+    private final PedidoProveedorRepositorio pedidoProveedorRepositorio;
 
-    public ProveedorServicio(ProveedorRepositorio proveedorRepositorio) {
+    public ProveedorServicio(ProveedorRepositorio proveedorRepositorio,
+                              PedidoProveedorRepositorio pedidoProveedorRepositorio) {
         this.proveedorRepositorio = proveedorRepositorio;
+        this.pedidoProveedorRepositorio = pedidoProveedorRepositorio;
     }
 
     @Transactional(readOnly = true)
@@ -51,7 +56,13 @@ public class ProveedorServicio {
     }
 
     public void eliminar(Long id) {
-        proveedorRepositorio.delete(buscarPorId(id));
+        Proveedor proveedor = buscarPorId(id);
+        if (pedidoProveedorRepositorio.existsByProveedorId(id)) {
+            throw new ConflictoException(
+                    "No se puede eliminar \"" + proveedor.getNombre() + "\": tiene pedidos registrados. "
+                            + "Cancela o conserva el histórico, o simplemente deja de usarlo.");
+        }
+        proveedorRepositorio.delete(proveedor);
     }
 
     private Proveedor buscarPorId(Long id) {

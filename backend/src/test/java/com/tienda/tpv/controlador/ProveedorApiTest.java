@@ -82,6 +82,39 @@ class ProveedorApiTest {
     }
 
     @Test
+    void eliminarUnProveedorConPedidosDevuelveConflicto() throws Exception {
+        MvcResult proveedor = mockMvc.perform(post("/api/proveedores")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(PROVEEDOR_JSON))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long idProveedor = objectMapper.readTree(proveedor.getResponse().getContentAsString()).get("id").asLong();
+
+        MvcResult producto = mockMvc.perform(post("/api/productos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "nombre": "Refrescos", "precioVenta": 1.50, "ivaPorcentaje": 10, "stockInicial": 0, "unidadMedida": "UNIDAD" }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long idProducto = objectMapper.readTree(producto.getResponse().getContentAsString()).get("id").asLong();
+
+        mockMvc.perform(post("/api/pedidos-proveedor")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "proveedorId": %d, "lineas": [ { "productoId": %d, "cantidad": 10 } ] }
+                                """.formatted(idProveedor, idProducto)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(delete("/api/proveedores/" + idProveedor))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("CONFLICTO"));
+
+        mockMvc.perform(get("/api/proveedores/" + idProveedor))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void obtenerProveedorInexistenteDevuelve404() throws Exception {
         mockMvc.perform(get("/api/proveedores/99999"))
                 .andExpect(status().isNotFound());

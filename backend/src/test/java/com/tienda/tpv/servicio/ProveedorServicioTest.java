@@ -3,7 +3,9 @@ package com.tienda.tpv.servicio;
 import com.tienda.tpv.dominio.Proveedor;
 import com.tienda.tpv.dto.ProveedorDTO;
 import com.tienda.tpv.dto.ProveedorEntradaDTO;
+import com.tienda.tpv.excepciones.ConflictoException;
 import com.tienda.tpv.excepciones.RecursoNoEncontradoException;
+import com.tienda.tpv.repositorio.PedidoProveedorRepositorio;
 import com.tienda.tpv.repositorio.ProveedorRepositorio;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +19,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,6 +28,9 @@ class ProveedorServicioTest {
 
     @Mock
     private ProveedorRepositorio proveedorRepositorio;
+
+    @Mock
+    private PedidoProveedorRepositorio pedidoProveedorRepositorio;
 
     @InjectMocks
     private ProveedorServicio proveedorServicio;
@@ -82,5 +88,31 @@ class ProveedorServicioTest {
 
         assertThatThrownBy(() -> proveedorServicio.eliminar(99L))
                 .isInstanceOf(RecursoNoEncontradoException.class);
+    }
+
+    @Test
+    void eliminarUnProveedorConPedidosLanzaConflictoYNoLoBorra() {
+        Proveedor proveedor = new Proveedor("Coca-Cola", null, null);
+        proveedor.setId(7L);
+        when(proveedorRepositorio.findById(7L)).thenReturn(Optional.of(proveedor));
+        when(pedidoProveedorRepositorio.existsByProveedorId(7L)).thenReturn(true);
+
+        assertThatThrownBy(() -> proveedorServicio.eliminar(7L))
+                .isInstanceOf(ConflictoException.class)
+                .hasMessageContaining("Coca-Cola");
+
+        verify(proveedorRepositorio, never()).delete(any(Proveedor.class));
+    }
+
+    @Test
+    void eliminarUnProveedorSinPedidosLoBorra() {
+        Proveedor proveedor = new Proveedor("Panadería Central", null, null);
+        proveedor.setId(8L);
+        when(proveedorRepositorio.findById(8L)).thenReturn(Optional.of(proveedor));
+        when(pedidoProveedorRepositorio.existsByProveedorId(8L)).thenReturn(false);
+
+        proveedorServicio.eliminar(8L);
+
+        verify(proveedorRepositorio).delete(proveedor);
     }
 }
