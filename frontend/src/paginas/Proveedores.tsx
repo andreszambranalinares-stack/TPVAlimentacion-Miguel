@@ -74,9 +74,14 @@ export default function Proveedores() {
 
   const eliminar = async (p: Proveedor) => {
     if (!confirm(`¿Eliminar el proveedor "${p.nombre}"?`)) return
-    await eliminarProveedor(p.id)
-    if (editando?.id === p.id) cancelarEdicion()
-    cargar()
+    setError('')
+    try {
+      await eliminarProveedor(p.id)
+      if (editando?.id === p.id) cancelarEdicion()
+      cargar()
+    } catch (e) {
+      if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
+    }
   }
 
   const campo = 'rounded border p-2'

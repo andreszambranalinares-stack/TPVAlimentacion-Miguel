@@ -13,4 +13,6 @@ public interface PedidoProveedorRepositorio extends JpaRepository<PedidoProveedo
     List<PedidoProveedor> findByProveedorIdOrderByFechaHoraDesc(Long proveedorId);
 
     List<PedidoProveedor> findAllByOrderByFechaHoraDesc();
+
+    boolean existsByProveedorId(Long proveedorId);
 }

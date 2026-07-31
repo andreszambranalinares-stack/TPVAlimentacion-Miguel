@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   buscarProductos,
   cancelarPedidoProveedor,
@@ -11,7 +11,7 @@ import {
   recibirPedidoProveedor,
 } from '../api'
 import { useEsAdmin } from '../AuthContexto'
-import { euros, seleccionarAlFoco } from '../utils'
+import { euros, normalizarTexto, seleccionarAlFoco } from '../utils'
 import type { EstadoPedido, PedidoProveedor, Producto, Proveedor } from '../tipos'
 
 const nombresEstado: Record<EstadoPedido, string> = {
@@ -52,9 +52,20 @@ export default function PedidosProveedor() {
   const [proveedorId, setProveedorId] = useState<number | ''>('')
   const [notas, setNotas] = useState('')
   const [lineasNuevas, setLineasNuevas] = useState<LineaNueva[]>([])
-  const [productoAAgregar, setProductoAAgregar] = useState<number | ''>('')
+  const [productoAAgregar, setProductoAAgregar] = useState<Producto | null>(null)
+  const [textoProducto, setTextoProducto] = useState('')
+  const [indiceSugerencia, setIndiceSugerencia] = useState(0)
   const [cantidadAAgregar, setCantidadAAgregar] = useState('1')
   const [costeAAgregar, setCosteAAgregar] = useState('')
+  const productoInputRef = useRef<HTMLInputElement>(null)
+  const cantidadInputRef = useRef<HTMLInputElement>(null)
+
+  const sugerenciasProducto =
+    !productoAAgregar && textoProducto.trim().length > 0
+      ? catalogo
+          .filter((p) => normalizarTexto(p.nombre).includes(normalizarTexto(textoProducto.trim())))
+          .slice(0, 8)
+      : []
 
   const cargar = () => {
     setCargando(true)
@@ -123,24 +134,57 @@ export default function PedidosProveedor() {
     }
   }
 
+  const elegirProducto = (p: Producto) => {
+    setProductoAAgregar(p)
+    setTextoProducto(p.nombre)
+    setIndiceSugerencia(0)
+    cantidadInputRef.current?.focus()
+    cantidadInputRef.current?.select()
+  }
+
+  const alTecleoProducto = (evento: React.KeyboardEvent<HTMLInputElement>) => {
+    if (evento.key === 'ArrowDown') {
+      evento.preventDefault()
+      setIndiceSugerencia((i) => Math.min(i + 1, sugerenciasProducto.length - 1))
+    } else if (evento.key === 'ArrowUp') {
+      evento.preventDefault()
+      setIndiceSugerencia((i) => Math.max(i - 1, 0))
+    } else if (evento.key === 'Enter') {
+      evento.preventDefault()
+      if (sugerenciasProducto[indiceSugerencia]) {
+        elegirProducto(sugerenciasProducto[indiceSugerencia])
+      }
+    } else if (evento.key === 'Escape') {
+      setTextoProducto('')
+      setProductoAAgregar(null)
+    }
+  }
+
+  const alTecleoCantidadOCoste = (evento: React.KeyboardEvent<HTMLInputElement>) => {
+    if (evento.key === 'Enter') {
+      evento.preventDefault()
+      agregarLinea()
+    }
+  }
+
   const agregarLinea = () => {
-    if (productoAAgregar === '') return
+    if (!productoAAgregar) return
     const cantidad = Number(cantidadAAgregar)
     if (!cantidad || cantidad <= 0) return
-    const producto = catalogo.find((p) => p.id === productoAAgregar)
-    if (!producto) return
     setLineasNuevas((actual) => [
-      ...actual.filter((l) => l.productoId !== productoAAgregar),
+      ...actual.filter((l) => l.productoId !== productoAAgregar.id),
       {
-        productoId: producto.id,
-        productoNombre: producto.nombre,
+        productoId: productoAAgregar.id,
+        productoNombre: productoAAgregar.nombre,
         cantidad: cantidadAAgregar,
         precioCosteUnitario: costeAAgregar,
       },
     ])
-    setProductoAAgregar('')
+    setProductoAAgregar(null)
+    setTextoProducto('')
     setCantidadAAgregar('1')
     setCosteAAgregar('')
+    productoInputRef.current?.focus()
   }
 
   const quitarLinea = (productoId: number) => {
@@ -165,6 +209,8 @@ export default function PedidosProveedor() {
       setProveedorId('')
       setNotas('')
       setLineasNuevas([])
+      setProductoAAgregar(null)
+      setTextoProducto('')
       setMensaje('Pedido creado')
       cargar()
     } catch (e) {
@@ -385,30 +431,55 @@ export default function PedidosProveedor() {
               ))}
             </ul>
             <div className="mb-3 flex items-end gap-2">
-              <label className="flex-1">
+              <label className="relative flex-1">
                 <span className="text-xs text-slate-600">Producto</span>
-                <select
-                  value={productoAAgregar}
-                  onChange={(e) => setProductoAAgregar(e.target.value === '' ? '' : Number(e.target.value))}
+                <input
+                  ref={productoInputRef}
+                  value={textoProducto}
+                  onChange={(e) => {
+                    setTextoProducto(e.target.value)
+                    setProductoAAgregar(null)
+                    setIndiceSugerencia(0)
+                  }}
+                  onKeyDown={alTecleoProducto}
+                  placeholder="Escribe el nombre…"
+                  autoComplete="off"
                   className={campo}
-                >
-                  <option value="">Selecciona…</option>
-                  {catalogo.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre}
-                    </option>
-                  ))}
-                </select>
+                  role="combobox"
+                  aria-expanded={sugerenciasProducto.length > 0}
+                  aria-controls="sugerencias-producto-pedido"
+                />
+                {sugerenciasProducto.length > 0 && (
+                  <ul
+                    id="sugerencias-producto-pedido"
+                    role="listbox"
+                    className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border bg-white shadow-lg"
+                  >
+                    {sugerenciasProducto.map((p, i) => (
+                      <li
+                        key={p.id}
+                        role="option"
+                        aria-selected={i === indiceSugerencia}
+                        onMouseDown={() => elegirProducto(p)}
+                        className={`cursor-pointer px-3 py-1.5 text-sm ${i === indiceSugerencia ? 'bg-amber-100' : 'hover:bg-slate-50'}`}
+                      >
+                        {p.nombre}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </label>
               <label className="w-20">
                 <span className="text-xs text-slate-600">Cantidad</span>
                 <input
+                  ref={cantidadInputRef}
                   type="number"
                   min="0"
                   step="any"
                   value={cantidadAAgregar}
                   onChange={(e) => setCantidadAAgregar(e.target.value)}
                   onFocus={seleccionarAlFoco}
+                  onKeyDown={alTecleoCantidadOCoste}
                   className={campo}
                 />
               </label>
@@ -421,6 +492,7 @@ export default function PedidosProveedor() {
                   value={costeAAgregar}
                   onChange={(e) => setCosteAAgregar(e.target.value)}
                   onFocus={seleccionarAlFoco}
+                  onKeyDown={alTecleoCantidadOCoste}
                   className={campo}
                 />
               </label>
