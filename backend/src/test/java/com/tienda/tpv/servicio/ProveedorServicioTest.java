@@ -34,14 +34,17 @@ class ProveedorServicioTest {
         when(proveedorRepositorio.save(any(Proveedor.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ProveedorDTO creado = proveedorServicio.crear(
-                new ProveedorEntradaDTO("  Droguerías López  ", "912345678", "Marta"));
+                new ProveedorEntradaDTO("  Droguerías López  ", "912345678", "Marta", "pedidos@droguerias.es", "Calle Mayor 1"));
 
         assertThat(creado.nombre()).isEqualTo("Droguerías López");
+        assertThat(creado.email()).isEqualTo("pedidos@droguerias.es");
+        assertThat(creado.direccion()).isEqualTo("Calle Mayor 1");
 
         ArgumentCaptor<Proveedor> captor = ArgumentCaptor.forClass(Proveedor.class);
         verify(proveedorRepositorio).save(captor.capture());
         assertThat(captor.getValue().getNombre()).isEqualTo("Droguerías López");
         assertThat(captor.getValue().getTelefono()).isEqualTo("912345678");
+        assertThat(captor.getValue().getEmail()).isEqualTo("pedidos@droguerias.es");
     }
 
     @Test
@@ -69,7 +72,7 @@ class ProveedorServicioTest {
         when(proveedorRepositorio.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> proveedorServicio.actualizar(99L,
-                new ProveedorEntradaDTO("Nuevo nombre", null, null)))
+                new ProveedorEntradaDTO("Nuevo nombre", null, null, null, null)))
                 .isInstanceOf(RecursoNoEncontradoException.class);
     }
 

@@ -4,11 +4,15 @@ import com.tienda.tpv.dominio.EstadoPedido;
 import com.tienda.tpv.dto.PedidoProveedorDTO;
 import com.tienda.tpv.dto.PedidoProveedorEntradaDTO;
 import com.tienda.tpv.dto.RecepcionEntradaDTO;
+import com.tienda.tpv.servicio.PedidoProveedorPdfServicio;
 import com.tienda.tpv.servicio.PedidoProveedorServicio;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,9 +30,12 @@ import java.util.List;
 public class PedidoProveedorControlador {
 
     private final PedidoProveedorServicio pedidoProveedorServicio;
+    private final PedidoProveedorPdfServicio pedidoProveedorPdfServicio;
 
-    public PedidoProveedorControlador(PedidoProveedorServicio pedidoProveedorServicio) {
+    public PedidoProveedorControlador(PedidoProveedorServicio pedidoProveedorServicio,
+                                      PedidoProveedorPdfServicio pedidoProveedorPdfServicio) {
         this.pedidoProveedorServicio = pedidoProveedorServicio;
+        this.pedidoProveedorPdfServicio = pedidoProveedorPdfServicio;
     }
 
     @PostMapping
@@ -62,5 +69,15 @@ public class PedidoProveedorControlador {
     @Operation(summary = "Cancelar un pedido sin recepciones registradas (solo ADMIN)")
     public void cancelar(@PathVariable Long id) {
         pedidoProveedorServicio.cancelar(id);
+    }
+
+    @GetMapping("/{id}/pdf")
+    @Operation(summary = "Descargar el pedido en PDF para enviarlo al proveedor")
+    public ResponseEntity<byte[]> pdf(@PathVariable Long id) {
+        byte[] pdf = pedidoProveedorPdfServicio.generar(id);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"pedido-" + id + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }

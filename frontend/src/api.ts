@@ -112,6 +112,9 @@ export const listarProveedores = () => api.get<Proveedor[]>('/proveedores').then
 export const crearProveedor = (datos: Omit<Proveedor, 'id'>) =>
   api.post<Proveedor>('/proveedores', datos).then((r) => r.data)
 
+export const actualizarProveedor = (id: number, datos: Omit<Proveedor, 'id'>) =>
+  api.put<Proveedor>(`/proveedores/${id}`, datos).then((r) => r.data)
+
 export const eliminarProveedor = (id: number) => api.delete(`/proveedores/${id}`)
 
 // Ventas

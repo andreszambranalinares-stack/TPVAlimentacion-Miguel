@@ -24,6 +24,12 @@ public class Proveedor {
     @Column(length = 150)
     private String contacto;
 
+    @Column(length = 150)
+    private String email;
+
+    @Column(length = 255)
+    private String direccion;
+
     public Proveedor() {
     }
 
@@ -63,5 +69,21 @@ public class Proveedor {
 
     public void setContacto(String contacto) {
         this.contacto = contacto;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getDireccion() {
+        return direccion;
+    }
+
+    public void setDireccion(String direccion) {
+        this.direccion = direccion;
     }
 }
