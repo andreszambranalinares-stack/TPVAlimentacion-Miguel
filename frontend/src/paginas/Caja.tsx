@@ -2,13 +2,18 @@ import axios from 'axios'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { buscarProductos, crearVenta, esErrorDeSesionCaducada, mensajeDeError, productoPorCodigoBarras } from '../api'
 import TicketModal from '../componentes/TicketModal'
+import { useEsAdmin } from '../AuthContexto'
 import { euros } from '../utils'
 import type { MetodoPago, Producto, Venta } from '../tipos'
 
 interface LineaCarrito {
   producto: Producto
   cantidad: number
+  descuentoPorcentaje: number
 }
+
+const subtotalLinea = (l: LineaCarrito) =>
+  l.producto.precioVenta * l.cantidad * (1 - l.descuentoPorcentaje / 100)
 
 const pareceCodigoBarras = (texto: string) => /^\d{6,}$/.test(texto.trim())
 
@@ -17,6 +22,7 @@ const pareceCodigoBarras = (texto: string) => /^\d{6,}$/.test(texto.trim())
  * el foco vive en el buscador, Enter añade y F2/F3 cobran.
  */
 export default function Caja() {
+  const esAdmin = useEsAdmin()
   const [busqueda, setBusqueda] = useState('')
   const [resultados, setResultados] = useState<Producto[]>([])
   const [indice, setIndice] = useState(0)
@@ -70,12 +76,19 @@ export default function Caja() {
       if (existente) {
         return actual.map((l) => (l.producto.id === producto.id ? { ...l, cantidad: l.cantidad + 1 } : l))
       }
-      return [...actual, { producto, cantidad: 1 }]
+      return [...actual, { producto, cantidad: 1, descuentoPorcentaje: 0 }]
     })
     setBusqueda('')
     setResultados([])
     enfocarBuscador()
   }, [])
+
+  const cambiarDescuento = (productoId: number, descuentoPorcentaje: number) => {
+    const acotado = Math.min(100, Math.max(0, descuentoPorcentaje))
+    setCarrito((actual) =>
+      actual.map((l) => (l.producto.id === productoId ? { ...l, descuentoPorcentaje: acotado } : l)),
+    )
+  }
 
   const quitarTextoCantidad = (productoId: number) => {
     setTextoCantidad((actual) => {
@@ -129,7 +142,11 @@ export default function Caja() {
       try {
         const venta = await crearVenta({
           metodoPago,
-          lineas: carrito.map((l) => ({ productoId: l.producto.id, cantidad: l.cantidad })),
+          lineas: carrito.map((l) => ({
+            productoId: l.producto.id,
+            cantidad: l.cantidad,
+            descuentoPorcentaje: l.descuentoPorcentaje || undefined,
+          })),
         })
         setTicket(venta)
         setCarrito([])
@@ -171,9 +188,9 @@ export default function Caja() {
     return () => window.removeEventListener('keydown', manejador)
   }, [cobrar, ticket])
 
-  const total = carrito.reduce((suma, l) => suma + l.producto.precioVenta * l.cantidad, 0)
+  const total = carrito.reduce((suma, l) => suma + subtotalLinea(l), 0)
   const desgloseIva = carrito.reduce<Record<string, number>>((acc, l) => {
-    const subtotal = l.producto.precioVenta * l.cantidad
+    const subtotal = subtotalLinea(l)
     const iva = (subtotal * l.producto.ivaPorcentaje) / (100 + l.producto.ivaPorcentaje)
     const clave = `${l.producto.ivaPorcentaje}`
     acc[clave] = (acc[clave] ?? 0) + iva
@@ -235,6 +252,7 @@ export default function Caja() {
               <th className="p-3">Producto</th>
               <th className="p-3">Precio</th>
               <th className="p-3">Cantidad</th>
+              {esAdmin && <th className="p-3">Dto. %</th>}
               <th className="p-3 text-right">Subtotal</th>
               <th className="p-3"></th>
             </tr>
@@ -242,7 +260,7 @@ export default function Caja() {
           <tbody>
             {carrito.length === 0 && (
               <tr>
-                <td colSpan={5} className="p-6 text-center text-slate-400">
+                <td colSpan={esAdmin ? 6 : 5} className="p-6 text-center text-slate-400">
                   El carrito está vacío. Escanea o busca un producto.
                 </td>
               </tr>
@@ -298,7 +316,21 @@ export default function Caja() {
                     </button>
                   </div>
                 </td>
-                <td className="p-3 text-right font-semibold">{euros(l.producto.precioVenta * l.cantidad)}</td>
+                {esAdmin && (
+                  <td className="p-3">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={l.descuentoPorcentaje}
+                      onChange={(e) => cambiarDescuento(l.producto.id, Number(e.target.value))}
+                      aria-label={`Descuento en % para ${l.producto.nombre}`}
+                      className="w-16 rounded border p-1 text-center"
+                    />
+                  </td>
+                )}
+                <td className="p-3 text-right font-semibold">{euros(subtotalLinea(l))}</td>
                 <td className="p-3 text-right">
                   <button
                     onClick={() => cambiarCantidad(l.producto.id, 0)}

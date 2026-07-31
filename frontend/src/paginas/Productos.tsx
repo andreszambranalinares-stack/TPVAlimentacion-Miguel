@@ -24,6 +24,8 @@ const formularioVacio: ProductoEntrada = {
   stockInicial: null,
   unidadMedida: 'UNIDAD',
   activo: true,
+  esPack: false,
+  componentes: [],
 }
 
 export default function Productos() {
@@ -40,6 +42,10 @@ export default function Productos() {
   const [mostrarFormulario, setMostrarFormulario] = useState(false)
   const [formulario, setFormulario] = useState<ProductoEntrada>(formularioVacio)
   const [nuevaCategoria, setNuevaCategoria] = useState('')
+  const [nombresComponentes, setNombresComponentes] = useState<Record<number, string>>({})
+  const [catalogo, setCatalogo] = useState<Producto[]>([])
+  const [componenteAAgregar, setComponenteAAgregar] = useState<number | ''>('')
+  const [cantidadComponente, setCantidadComponente] = useState('1')
 
   const cargar = useCallback(() => {
     setCargando(true)
@@ -64,11 +70,23 @@ export default function Productos() {
       })
   }, [])
 
+  const cargarCatalogo = () => {
+    buscarProductos()
+      .then((lista) => setCatalogo(lista.filter((p) => !p.esPack)))
+      .catch(() => setCatalogo([]))
+  }
+
+  useEffect(cargarCatalogo, [])
+
   const abrirAlta = () => {
     setEditando(null)
     setFormulario(formularioVacio)
+    setNombresComponentes({})
+    setComponenteAAgregar('')
+    setCantidadComponente('1')
     setMostrarFormulario(true)
     setError('')
+    cargarCatalogo()
   }
 
   const abrirEdicion = (p: Producto) => {
@@ -84,9 +102,34 @@ export default function Productos() {
       stockInicial: null,
       unidadMedida: p.unidadMedida,
       activo: p.activo,
+      esPack: p.esPack,
+      componentes: p.componentes.map((c) => ({ productoId: c.productoId, cantidad: c.cantidad })),
     })
+    setNombresComponentes(Object.fromEntries(p.componentes.map((c) => [c.productoId, c.productoNombre])))
+    setComponenteAAgregar('')
+    setCantidadComponente('1')
     setMostrarFormulario(true)
     setError('')
+    cargarCatalogo()
+  }
+
+  const agregarComponente = () => {
+    if (componenteAAgregar === '') return
+    const cantidad = Number(cantidadComponente)
+    if (!cantidad || cantidad <= 0) return
+    const producto = catalogo.find((p) => p.id === componenteAAgregar)
+    if (!producto) return
+    setFormulario((f) => ({
+      ...f,
+      componentes: [...f.componentes.filter((c) => c.productoId !== componenteAAgregar), { productoId: componenteAAgregar, cantidad }],
+    }))
+    setNombresComponentes((actual) => ({ ...actual, [componenteAAgregar]: producto.nombre }))
+    setComponenteAAgregar('')
+    setCantidadComponente('1')
+  }
+
+  const quitarComponente = (productoId: number) => {
+    setFormulario((f) => ({ ...f, componentes: f.componentes.filter((c) => c.productoId !== productoId) }))
   }
 
   const guardar = async (evento: React.FormEvent) => {
@@ -178,6 +221,7 @@ export default function Productos() {
             <tr key={p.id} className={`border-b last:border-0 ${!p.activo ? 'text-slate-400' : ''}`}>
               <td className="p-3">
                 {p.nombre}
+                {p.esPack && <span className="ml-2 rounded bg-amber-100 px-1.5 text-xs text-amber-700">pack</span>}
                 {!p.activo && <span className="ml-2 rounded bg-slate-200 px-1.5 text-xs">baja</span>}
               </td>
               <td className="p-3 font-mono text-sm">{p.codigoBarras ?? '—'}</td>
@@ -370,7 +414,76 @@ export default function Productos() {
                   <span className="text-sm text-slate-600">Activo (a la venta)</span>
                 </label>
               )}
+              <label className="flex items-center gap-2 self-end sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={formulario.esPack}
+                  onChange={(e) => setFormulario({ ...formulario, esPack: e.target.checked, componentes: e.target.checked ? formulario.componentes : [] })}
+                />
+                <span className="text-sm text-slate-600">Es un pack o lote de varios productos</span>
+              </label>
             </div>
+
+            {formulario.esPack && (
+              <div className="mt-3 rounded border border-amber-200 bg-amber-50 p-3">
+                <p className="mb-2 text-sm font-semibold text-amber-800">
+                  Componentes del pack (se descuentan de su propio stock al vender)
+                </p>
+                <ul className="mb-2 divide-y">
+                  {formulario.componentes.length === 0 && (
+                    <li className="py-1.5 text-sm text-slate-500">Añade al menos un componente.</li>
+                  )}
+                  {formulario.componentes.map((c) => (
+                    <li key={c.productoId} className="flex items-center justify-between py-1.5 text-sm">
+                      <span>
+                        {nombresComponentes[c.productoId] ?? `Producto #${c.productoId}`} × {c.cantidad}
+                      </span>
+                      <button type="button" onClick={() => quitarComponente(c.productoId)} className="text-red-600 hover:underline">
+                        Quitar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex items-end gap-2">
+                  <label className="flex-1">
+                    <span className="text-xs text-slate-600">Producto componente</span>
+                    <select
+                      value={componenteAAgregar}
+                      onChange={(e) => setComponenteAAgregar(e.target.value === '' ? '' : Number(e.target.value))}
+                      className={campo}
+                    >
+                      <option value="">Selecciona…</option>
+                      {catalogo
+                        .filter((p) => p.id !== editando?.id)
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.nombre}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <label className="w-24">
+                    <span className="text-xs text-slate-600">Cantidad</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={cantidadComponente}
+                      onChange={(e) => setCantidadComponente(e.target.value)}
+                      className={campo}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={agregarComponente}
+                    className="rounded bg-slate-700 px-3 py-2 font-semibold text-white hover:bg-slate-600"
+                  >
+                    Añadir
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
