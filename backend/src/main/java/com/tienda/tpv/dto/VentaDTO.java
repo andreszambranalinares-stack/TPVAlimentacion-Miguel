@@ -14,7 +14,9 @@ public record VentaDTO(
         BigDecimal total,
         BigDecimal totalIva,
         MetodoPago metodoPago,
-        List<LineaVentaDTO> lineas
+        List<LineaVentaDTO> lineas,
+        /** Nombre del empleado que la realizó. Null en ventas anteriores a esta columna. */
+        String usuarioNombre
 ) {
 
     public static VentaDTO desde(Venta venta) {
@@ -24,6 +26,7 @@ public record VentaDTO(
                 venta.getTotal(),
                 venta.getTotalIva(),
                 venta.getMetodoPago(),
-                venta.getLineas().stream().map(LineaVentaDTO::desde).toList());
+                venta.getLineas().stream().map(LineaVentaDTO::desde).toList(),
+                venta.getUsuario() != null ? venta.getUsuario().getNombre() : null);
     }
 }

@@ -44,19 +44,22 @@ public class DevolucionServicio {
     private final ProductoRepositorio productoRepositorio;
     private final MovimientoStockRepositorio movimientoStockRepositorio;
     private final ComponentePackRepositorio componentePackRepositorio;
+    private final UsuarioActualServicio usuarioActualServicio;
 
     public DevolucionServicio(DevolucionRepositorio devolucionRepositorio,
                               LineaDevolucionRepositorio lineaDevolucionRepositorio,
                               VentaRepositorio ventaRepositorio,
                               ProductoRepositorio productoRepositorio,
                               MovimientoStockRepositorio movimientoStockRepositorio,
-                              ComponentePackRepositorio componentePackRepositorio) {
+                              ComponentePackRepositorio componentePackRepositorio,
+                              UsuarioActualServicio usuarioActualServicio) {
         this.devolucionRepositorio = devolucionRepositorio;
         this.lineaDevolucionRepositorio = lineaDevolucionRepositorio;
         this.ventaRepositorio = ventaRepositorio;
         this.productoRepositorio = productoRepositorio;
         this.movimientoStockRepositorio = movimientoStockRepositorio;
         this.componentePackRepositorio = componentePackRepositorio;
+        this.usuarioActualServicio = usuarioActualServicio;
     }
 
     public DevolucionDTO crear(DevolucionEntradaDTO entrada) {
@@ -66,6 +69,7 @@ public class DevolucionServicio {
         Devolucion devolucion = new Devolucion();
         devolucion.setVenta(venta);
         devolucion.setMotivo(entrada.motivo());
+        devolucion.setUsuario(usuarioActualServicio.obtener());
 
         BigDecimal total = BigDecimal.ZERO;
         BigDecimal totalIva = BigDecimal.ZERO;
@@ -162,6 +166,7 @@ public class DevolucionServicio {
         movimiento.setTipo(TipoMovimiento.DEVOLUCION);
         movimiento.setCantidad(cantidad);
         movimiento.setMotivo(motivo);
+        movimiento.setUsuario(usuarioActualServicio.obtener());
         return movimiento;
     }
 }

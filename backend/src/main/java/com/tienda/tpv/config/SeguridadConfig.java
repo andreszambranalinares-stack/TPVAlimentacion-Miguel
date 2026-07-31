@@ -39,6 +39,7 @@ public class SeguridadConfig {
                         .requestMatchers("/api/auth/**", "/error").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs", "/api-docs/**").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/usuarios/yo/password").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/datos-tienda").hasRole("ADMIN")
                         .requestMatchers("/api/informes/**", "/api/cierres-caja/**", "/api/usuarios/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/pedidos-proveedor").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/pedidos-proveedor/*/cancelar").hasRole("ADMIN")

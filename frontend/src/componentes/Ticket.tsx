@@ -1,4 +1,6 @@
-import type { Venta } from '../tipos'
+import { useEffect, useState } from 'react'
+import { obtenerDatosTienda } from '../api'
+import type { DatosTienda, Venta } from '../tipos'
 import { euros } from '../utils'
 
 interface Props {
@@ -10,10 +12,21 @@ interface Props {
 /** Ticket imprimible en formato de impresora térmica (58/80 mm). */
 export default function Ticket({ venta, entregado }: Props) {
   const fecha = new Date(venta.fechaHora)
+  const [datos, setDatos] = useState<DatosTienda | null>(null)
+
+  useEffect(() => {
+    obtenerDatosTienda()
+      .then(setDatos)
+      .catch(() => {})
+  }, [])
+
   return (
     <div className="ticket-print mx-auto w-72 bg-white p-3 font-mono text-xs text-black">
       <div className="text-center">
-        <p className="text-sm font-bold">ALIMENTACIÓN MIGUEL</p>
+        <p className="text-sm font-bold">{(datos?.nombre ?? 'ALIMENTACIÓN MIGUEL').toUpperCase()}</p>
+        {datos?.direccion && <p>{datos.direccion}</p>}
+        {datos?.telefono && <p>Tel: {datos.telefono}</p>}
+        {datos?.nif && <p>NIF: {datos.nif}</p>}
         <p>
           {fecha.toLocaleDateString('es-ES')} {fecha.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
         </p>

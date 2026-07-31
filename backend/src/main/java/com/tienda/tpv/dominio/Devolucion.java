@@ -42,6 +42,11 @@ public class Devolucion {
     @Column(length = 255)
     private String motivo;
 
+    /** Empleado que la realizó. Null en devoluciones anteriores a esta columna. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usuario_id")
+    private Usuario usuario;
+
     @OneToMany(mappedBy = "devolucion", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<LineaDevolucion> lineas = new ArrayList<>();
 
@@ -104,5 +109,13 @@ public class Devolucion {
 
     public void setLineas(List<LineaDevolucion> lineas) {
         this.lineas = lineas;
+    }
+
+    public Usuario getUsuario() {
+        return usuario;
+    }
+
+    public void setUsuario(Usuario usuario) {
+        this.usuario = usuario;
     }
 }

@@ -14,7 +14,9 @@ public record MovimientoStockDTO(
         TipoMovimiento tipo,
         BigDecimal cantidad,
         String motivo,
-        LocalDateTime fechaHora
+        LocalDateTime fechaHora,
+        /** Nombre del empleado que lo realizó. Null en movimientos anteriores a esta columna. */
+        String usuarioNombre
 ) {
 
     public static MovimientoStockDTO desde(MovimientoStock m) {
@@ -25,6 +27,7 @@ public record MovimientoStockDTO(
                 m.getTipo(),
                 m.getCantidad(),
                 m.getMotivo(),
-                m.getFechaHora());
+                m.getFechaHora(),
+                m.getUsuario() != null ? m.getUsuario().getNombre() : null);
     }
 }

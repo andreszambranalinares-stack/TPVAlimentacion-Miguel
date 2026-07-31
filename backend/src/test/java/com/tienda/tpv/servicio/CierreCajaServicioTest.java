@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -30,6 +31,9 @@ class CierreCajaServicioTest {
 
     @Mock
     private InformeServicio informeServicio;
+
+    @Mock
+    private UsuarioActualServicio usuarioActualServicio;
 
     @InjectMocks
     private CierreCajaServicio cierreCajaServicio;
@@ -51,7 +55,8 @@ class CierreCajaServicioTest {
         LocalDate fecha = LocalDate.now().minusDays(5);
         when(cierreCajaRepositorio.existsByFecha(fecha)).thenReturn(false);
         when(informeServicio.resumenVentas(fecha, fecha)).thenReturn(
-                new InformeVentasDTO(fecha, fecha, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO));
+                new InformeVentasDTO(fecha, fecha, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                        List.of()));
         when(cierreCajaRepositorio.save(any(CierreCaja.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CierreCajaDTO cierre = cierreCajaServicio.cerrar(

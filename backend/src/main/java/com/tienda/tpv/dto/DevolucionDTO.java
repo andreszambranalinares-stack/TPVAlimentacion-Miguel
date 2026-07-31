@@ -13,7 +13,9 @@ public record DevolucionDTO(
         BigDecimal total,
         BigDecimal totalIva,
         String motivo,
-        List<LineaDevolucionDTO> lineas
+        List<LineaDevolucionDTO> lineas,
+        /** Nombre del empleado que la realizó. Null en devoluciones anteriores a esta columna. */
+        String usuarioNombre
 ) {
 
     public static DevolucionDTO desde(Devolucion d) {
@@ -24,6 +26,7 @@ public record DevolucionDTO(
                 d.getTotal(),
                 d.getTotalIva(),
                 d.getMotivo(),
-                d.getLineas().stream().map(LineaDevolucionDTO::desde).toList());
+                d.getLineas().stream().map(LineaDevolucionDTO::desde).toList(),
+                d.getUsuario() != null ? d.getUsuario().getNombre() : null);
     }
 }

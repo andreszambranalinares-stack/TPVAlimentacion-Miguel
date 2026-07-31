@@ -233,6 +233,7 @@ export default function Cierre() {
               <th className="py-1 text-right">Efectivo</th>
               <th className="py-1 text-right">Contado</th>
               <th className="py-1 text-right">Diferencia</th>
+              <th className="py-1">Empleado</th>
             </tr>
           </thead>
           <tbody>
@@ -250,18 +251,19 @@ export default function Cierre() {
                 >
                   {euros(c.diferencia)}
                 </td>
+                <td className="py-1.5">{c.usuarioNombre ?? '—'}</td>
               </tr>
             ))}
             {cargando && (
               <tr>
-                <td colSpan={6} className="py-4 text-center text-slate-400">
+                <td colSpan={7} className="py-4 text-center text-slate-400">
                   Cargando…
                 </td>
               </tr>
             )}
             {!cargando && cierres.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-4 text-center text-slate-400">
+                <td colSpan={7} className="py-4 text-center text-slate-400">
                   Todavía no hay cierres registrados.
                 </td>
               </tr>

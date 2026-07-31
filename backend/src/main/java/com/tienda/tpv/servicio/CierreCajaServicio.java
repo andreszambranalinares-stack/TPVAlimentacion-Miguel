@@ -23,10 +23,13 @@ public class CierreCajaServicio {
 
     private final CierreCajaRepositorio cierreCajaRepositorio;
     private final InformeServicio informeServicio;
+    private final UsuarioActualServicio usuarioActualServicio;
 
-    public CierreCajaServicio(CierreCajaRepositorio cierreCajaRepositorio, InformeServicio informeServicio) {
+    public CierreCajaServicio(CierreCajaRepositorio cierreCajaRepositorio, InformeServicio informeServicio,
+                              UsuarioActualServicio usuarioActualServicio) {
         this.cierreCajaRepositorio = cierreCajaRepositorio;
         this.informeServicio = informeServicio;
+        this.usuarioActualServicio = usuarioActualServicio;
     }
 
     /**
@@ -64,6 +67,7 @@ public class CierreCajaServicio {
         cierre.setEfectivoContado(entrada.efectivoContado());
         cierre.setDiferencia(entrada.efectivoContado().subtract(resumen.totalEfectivo()));
         cierre.setNotas(entrada.notas());
+        cierre.setUsuario(usuarioActualServicio.obtener());
         if (entrada.denominaciones() != null) {
             for (DenominacionEntradaDTO d : entrada.denominaciones()) {
                 if (d.cantidad() == 0) {

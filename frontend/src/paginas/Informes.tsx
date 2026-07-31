@@ -114,6 +114,30 @@ export default function Informes() {
         </div>
       )}
 
+      {resumen && resumen.desgloseIva.length > 0 && (
+        <div className={tarjeta}>
+          <h2 className="mb-2 font-bold">Desglose de IVA (para la declaración trimestral)</h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-slate-500">
+                <th className="py-1">Tipo</th>
+                <th className="py-1 text-right">Base imponible</th>
+                <th className="py-1 text-right">Cuota de IVA</th>
+              </tr>
+            </thead>
+            <tbody>
+              {resumen.desgloseIva.map((d) => (
+                <tr key={d.tipoIva} className="border-b last:border-0">
+                  <td className="py-1.5">{d.tipoIva}%</td>
+                  <td className="py-1.5 text-right">{euros(d.baseImponible)}</td>
+                  <td className="py-1.5 text-right font-semibold">{euros(d.cuotaIva)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-2">
         <div className={tarjeta}>
           <h2 className="mb-2 font-bold">Productos más vendidos</h2>
@@ -197,6 +221,7 @@ export default function Informes() {
               <th className="py-1">Ticket</th>
               <th className="py-1">Fecha y hora</th>
               <th className="py-1">Pago</th>
+              <th className="py-1">Empleado</th>
               <th className="py-1 text-right">IVA</th>
               <th className="py-1 text-right">Total</th>
               <th className="py-1"></th>
@@ -208,6 +233,7 @@ export default function Informes() {
                 <td className="py-1.5">#{v.id}</td>
                 <td className="py-1.5">{new Date(v.fechaHora).toLocaleString('es-ES')}</td>
                 <td className="py-1.5">{v.metodoPago === 'EFECTIVO' ? 'Efectivo' : 'Tarjeta'}</td>
+                <td className="py-1.5">{v.usuarioNombre ?? '—'}</td>
                 <td className="py-1.5 text-right">{euros(v.totalIva)}</td>
                 <td className="py-1.5 text-right font-semibold">{euros(v.total)}</td>
                 <td className="py-1.5 text-right">
@@ -219,14 +245,14 @@ export default function Informes() {
             ))}
             {cargando && (
               <tr>
-                <td colSpan={6} className="py-4 text-center text-slate-400">
+                <td colSpan={7} className="py-4 text-center text-slate-400">
                   Cargando…
                 </td>
               </tr>
             )}
             {!cargando && ventas.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-4 text-center text-slate-400">
+                <td colSpan={7} className="py-4 text-center text-slate-400">
                   Sin ventas en el rango.
                 </td>
               </tr>

@@ -255,6 +255,7 @@ export default function Stock() {
                     {m.motivo ?? '—'}
                     <span className="ml-2 text-xs text-slate-400">
                       {new Date(m.fechaHora).toLocaleString('es-ES')}
+                      {m.usuarioNombre ? ` · ${m.usuarioNombre}` : ''}
                     </span>
                   </div>
                   <span className={`font-mono font-semibold ${m.cantidad >= 0 ? 'text-green-700' : 'text-red-700'}`}>

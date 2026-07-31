@@ -2,6 +2,8 @@ import axios, { AxiosError } from 'axios'
 import type {
   Categoria,
   CierreCaja,
+  DatosTienda,
+  DatosTiendaEntrada,
   Denominacion,
   Devolucion,
   DevolucionEntrada,
@@ -177,3 +179,9 @@ export const recibirPedidoProveedor = (id: number, datos: RecepcionEntrada) =>
   api.post<PedidoProveedor>(`/pedidos-proveedor/${id}/recibir`, datos).then((r) => r.data)
 
 export const cancelarPedidoProveedor = (id: number) => api.post(`/pedidos-proveedor/${id}/cancelar`)
+
+// Datos de la tienda (para el ticket)
+export const obtenerDatosTienda = () => api.get<DatosTienda>('/datos-tienda').then((r) => r.data)
+
+export const actualizarDatosTienda = (datos: DatosTiendaEntrada) =>
+  api.put<DatosTienda>('/datos-tienda', datos).then((r) => r.data)
