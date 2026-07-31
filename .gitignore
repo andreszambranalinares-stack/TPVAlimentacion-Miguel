@@ -16,5 +16,9 @@ frontend/dist/
 .classpath
 .project
 
+# Copias de seguridad y registros generados en el ordenador de la tienda
+copias/
+.registros/
+
 # SO
 .DS_Store

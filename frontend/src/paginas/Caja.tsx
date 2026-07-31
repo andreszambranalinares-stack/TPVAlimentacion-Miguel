@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { buscarProductos, crearVenta, esErrorDeSesionCaducada, mensajeDeError, productoPorCodigoBarras } from '../api'
+import CobroEfectivoModal from '../componentes/CobroEfectivoModal'
 import TicketModal from '../componentes/TicketModal'
 import { useEsAdmin } from '../AuthContexto'
 import { euros, pareceCodigoBarras } from '../utils'
@@ -28,8 +29,14 @@ export default function Caja() {
   const [textoCantidad, setTextoCantidad] = useState<Record<number, string>>({})
   const [error, setError] = useState('')
   const [cobrando, setCobrando] = useState(false)
+  const [pidiendoEfectivo, setPidiendoEfectivo] = useState(false)
   const [ticket, setTicket] = useState<Venta | null>(null)
+  const [entregadoTicket, setEntregadoTicket] = useState<number | null>(null)
+  const [rapidos, setRapidos] = useState<Producto[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  // Casillas de cantidad del carrito, para saltar a la del producto a peso recién añadido.
+  const cantidadRefs = useRef<Record<number, HTMLInputElement | null>>({})
+  const productoAPesarRef = useRef<number | null>(null)
   // Búsqueda que corresponde a los `resultados` mostrados; evita añadir un
   // producto de una lista de sugerencias ya obsoleta si el usuario teclea rápido.
   const ultimaConsultaRef = useRef('')
@@ -39,6 +46,24 @@ export default function Caja() {
   useEffect(() => {
     enfocarBuscador()
   }, [])
+
+  // Productos sin código de barras (fruta, pan, granel): los que más se teclean.
+  useEffect(() => {
+    buscarProductos()
+      .then((lista) => setRapidos(lista.filter((p) => !p.codigoBarras).slice(0, 12)))
+      .catch(() => setRapidos([]))
+  }, [])
+
+  // Un producto a peso se añade con cantidad 1: llevamos el cursor a la casilla
+  // de cantidad para que el cajero teclee los kilos directamente.
+  useEffect(() => {
+    const id = productoAPesarRef.current
+    if (id === null) return
+    productoAPesarRef.current = null
+    const casilla = cantidadRefs.current[id]
+    casilla?.focus()
+    casilla?.select()
+  }, [carrito])
 
   // Búsqueda incremental por nombre (el código de barras va por Enter)
   useEffect(() => {
@@ -78,7 +103,11 @@ export default function Caja() {
     })
     setBusqueda('')
     setResultados([])
-    enfocarBuscador()
+    if (producto.unidadMedida === 'UNIDAD') {
+      enfocarBuscador()
+    } else {
+      productoAPesarRef.current = producto.id
+    }
   }, [])
 
   const cambiarDescuento = (productoId: number, descuentoPorcentaje: number) => {
@@ -133,7 +162,7 @@ export default function Caja() {
   }
 
   const cobrar = useCallback(
-    async (metodoPago: MetodoPago) => {
+    async (metodoPago: MetodoPago, entregado: number | null = null) => {
       if (carrito.length === 0 || cobrando) return
       setCobrando(true)
       setError('')
@@ -147,6 +176,8 @@ export default function Caja() {
           })),
         })
         setTicket(venta)
+        setEntregadoTicket(entregado)
+        setPidiendoEfectivo(false)
         setCarrito([])
         setTextoCantidad({})
       } catch (e) {
@@ -157,6 +188,12 @@ export default function Caja() {
     },
     [carrito, cobrando],
   )
+
+  const pedirEfectivo = useCallback(() => {
+    if (carrito.length === 0 || cobrando) return
+    setError('')
+    setPidiendoEfectivo(true)
+  }, [carrito, cobrando])
 
   // Teclas rápidas globales: F2 efectivo, F3 tarjeta, F4 vaciar carrito
   useEffect(() => {
@@ -169,9 +206,11 @@ export default function Caja() {
         }
         return
       }
+      // El cuadro de efectivo gestiona sus propias teclas (Enter/Escape).
+      if (pidiendoEfectivo) return
       if (evento.key === 'F2') {
         evento.preventDefault()
-        void cobrar('EFECTIVO')
+        pedirEfectivo()
       } else if (evento.key === 'F3') {
         evento.preventDefault()
         void cobrar('TARJETA')
@@ -184,7 +223,7 @@ export default function Caja() {
     }
     window.addEventListener('keydown', manejador)
     return () => window.removeEventListener('keydown', manejador)
-  }, [cobrar, ticket])
+  }, [cobrar, pedirEfectivo, pidiendoEfectivo, ticket])
 
   const total = carrito.reduce((suma, l) => suma + subtotalLinea(l), 0)
   const desgloseIva = carrito.reduce<Record<string, number>>((acc, l) => {
@@ -277,6 +316,9 @@ export default function Caja() {
                       −
                     </button>
                     <input
+                      ref={(el) => {
+                        cantidadRefs.current[l.producto.id] = el
+                      }}
                       type="number"
                       min="0"
                       step={l.producto.unidadMedida === 'UNIDAD' ? 1 : 0.001}
@@ -342,6 +384,27 @@ export default function Caja() {
             ))}
           </tbody>
         </table>
+
+        {rapidos.length > 0 && (
+          <div className="mt-4 rounded-lg bg-white p-4 shadow">
+            <p className="mb-3 text-sm font-semibold text-slate-500">Sin código de barras</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {rapidos.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => agregarAlCarrito(p)}
+                  className="rounded-lg border border-slate-200 p-3 text-left hover:border-amber-400 hover:bg-amber-50"
+                >
+                  <span className="block text-sm font-semibold leading-tight">{p.nombre}</span>
+                  <span className="mt-1 block text-xs text-slate-500">
+                    {euros(p.precioVenta)}
+                    {p.unidadMedida !== 'UNIDAD' && ` / ${p.unidadMedida.toLowerCase()}`}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="rounded-lg bg-white p-4 shadow lg:sticky lg:top-4 lg:self-start">
@@ -359,7 +422,7 @@ export default function Caja() {
         </div>
         <div className="mt-4 grid gap-2">
           <button
-            onClick={() => cobrar('EFECTIVO')}
+            onClick={pedirEfectivo}
             disabled={carrito.length === 0 || cobrando}
             className="rounded-lg bg-green-600 py-3 text-lg font-bold text-white hover:bg-green-700 disabled:opacity-40"
           >
@@ -386,12 +449,26 @@ export default function Caja() {
         </div>
       </div>
 
+      {pidiendoEfectivo && (
+        <CobroEfectivoModal
+          total={total}
+          cobrando={cobrando}
+          onConfirmar={(entregado) => void cobrar('EFECTIVO', entregado)}
+          onCancelar={() => {
+            setPidiendoEfectivo(false)
+            enfocarBuscador()
+          }}
+        />
+      )}
+
       {ticket && (
         <TicketModal
           venta={ticket}
+          entregado={entregadoTicket}
           textoBotonCerrar="Nueva venta (Enter)"
           onCerrar={() => {
             setTicket(null)
+            setEntregadoTicket(null)
             setTimeout(enfocarBuscador, 0)
           }}
         />

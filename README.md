@@ -9,6 +9,19 @@ Punto de venta (TPV) e inventario para Alimentación Miguel, una tienda de alime
 └── frontend/   React 18 + Vite + TypeScript + Tailwind CSS
 ```
 
+## Uso en la tienda
+
+Para el ordenador de la tienda hay scripts que evitan tener que usar la terminal
+(`.bat` en Windows, `.command` en macOS):
+
+| Script | Qué hace |
+| --- | --- |
+| `arrancar-tpv` | Arranca PostgreSQL, backend y frontend, y abre el navegador. |
+| `parar-tpv` | Cierra backend y frontend. |
+| `copia-seguridad` | Vuelca la base de datos a `copias/tpv_<fecha>.sql` y descarta las de más de 60 días. |
+
+El resto de esta sección describe el flujo de desarrollo.
+
 ## Requisitos
 
 - Java 21 y Maven 3.9+
