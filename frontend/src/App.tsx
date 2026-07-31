@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { cambiarMiPassword, cerrarSesion, esErrorDeSesionCaducada, mensajeDeError, usuarioActual } from './api'
 import { AuthContexto } from './AuthContexto'
 import type { Usuario } from './tipos'
@@ -15,15 +15,21 @@ import PedidosProveedor from './paginas/PedidosProveedor'
 import Usuarios from './paginas/Usuarios'
 import Ajustes from './paginas/Ajustes'
 
-const enlaces = [
-  { ruta: '/caja', texto: 'Caja', soloAdmin: false },
-  { ruta: '/devoluciones', texto: 'Devoluciones', soloAdmin: false },
+// Caja y Devoluciones se usan sin parar durante el día, así que quedan
+// siempre a la vista. El resto son pantallas de gestión que se abren de vez
+// en cuando: viven dentro del menú "Más" para no llenar la barra de arriba.
+const enlacesPrincipales = [
+  { ruta: '/caja', texto: 'Caja' },
+  { ruta: '/devoluciones', texto: 'Devoluciones' },
+]
+
+const enlacesMenu = [
   { ruta: '/productos', texto: 'Productos', soloAdmin: false },
   { ruta: '/stock', texto: 'Stock', soloAdmin: false },
-  { ruta: '/pedidos-proveedor', texto: 'Pedidos', soloAdmin: false },
+  { ruta: '/pedidos-proveedor', texto: 'Pedidos a proveedor', soloAdmin: false },
   { ruta: '/proveedores', texto: 'Proveedores', soloAdmin: true },
   { ruta: '/informes', texto: 'Informes', soloAdmin: true },
-  { ruta: '/cierre', texto: 'Cierre', soloAdmin: true },
+  { ruta: '/cierre', texto: 'Cierre de caja', soloAdmin: true },
   { ruta: '/usuarios', texto: 'Empleados', soloAdmin: true },
   { ruta: '/ajustes', texto: 'Ajustes', soloAdmin: true },
 ]
@@ -36,6 +42,11 @@ export default function App() {
   const [passwordNueva, setPasswordNueva] = useState('')
   const [errorCuenta, setErrorCuenta] = useState('')
   const [mensajeCuenta, setMensajeCuenta] = useState('')
+  const [menuAbierto, setMenuAbierto] = useState(false)
+  const location = useLocation()
+
+  // Cierra el menú "Más" en cuanto se cambia de página.
+  useEffect(() => setMenuAbierto(false), [location.pathname])
 
   useEffect(() => {
     usuarioActual()
@@ -73,7 +84,8 @@ export default function App() {
   }
 
   const esAdmin = usuario.rol === 'ADMIN'
-  const visibles = enlaces.filter((e) => esAdmin || !e.soloAdmin)
+  const visiblesMenu = enlacesMenu.filter((e) => esAdmin || !e.soloAdmin)
+  const paginaActualEnMenu = enlacesMenu.find((e) => e.ruta === location.pathname)
 
   return (
     <AuthContexto.Provider value={usuario}>
@@ -81,7 +93,7 @@ export default function App() {
         <nav className="bg-slate-800 text-white print:hidden">
           <div className="mx-auto flex max-w-6xl items-center gap-1 px-4">
             <span className="mr-4 py-3 text-lg font-bold">🛒 Alimentación Miguel</span>
-            {visibles.map((e) => (
+            {enlacesPrincipales.map((e) => (
               <NavLink
                 key={e.ruta}
                 to={e.ruta}
@@ -92,6 +104,38 @@ export default function App() {
                 {e.texto}
               </NavLink>
             ))}
+            <div className="relative">
+              <button
+                onClick={() => setMenuAbierto((abierto) => !abierto)}
+                className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium hover:bg-slate-700 ${
+                  paginaActualEnMenu ? 'bg-slate-900 text-amber-300' : ''
+                }`}
+                aria-expanded={menuAbierto}
+                aria-haspopup="true"
+              >
+                <span aria-hidden="true">☰</span>
+                <span>{paginaActualEnMenu?.texto ?? 'Más'}</span>
+              </button>
+              {menuAbierto && (
+                <>
+                  {/* Capa invisible para cerrar el menú al hacer clic fuera. */}
+                  <div className="fixed inset-0 z-10" onClick={() => setMenuAbierto(false)} />
+                  <div className="absolute left-0 top-full z-20 w-56 overflow-hidden rounded-b-lg bg-slate-800 py-1 shadow-xl">
+                    {visiblesMenu.map((e) => (
+                      <NavLink
+                        key={e.ruta}
+                        to={e.ruta}
+                        className={({ isActive }) =>
+                          `block px-4 py-2.5 text-sm hover:bg-slate-700 ${isActive ? 'bg-slate-900 text-amber-300' : ''}`
+                        }
+                      >
+                        {e.texto}
+                      </NavLink>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
             <span className="ml-auto flex items-center gap-3 text-sm text-slate-300">
               <button
                 onClick={() => {

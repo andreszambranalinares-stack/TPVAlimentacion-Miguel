@@ -2,6 +2,8 @@
 chcp 65001 >nul
 title Arrancando Alimentacion Miguel
 cd /d "%~dp0"
+if not exist ".registros" mkdir ".registros"
+echo %date% %time% [arrancar-tpv] Arrancando la aplicacion >> ".registros\actividad.log"
 
 echo.
 echo   ALIMENTACION MIGUEL - arrancando la aplicacion
@@ -31,6 +33,7 @@ if not exist "frontend\node_modules" (
         popd
         echo.
         echo   ERROR: no se pudo instalar la pantalla. Revisa que Node.js este instalado.
+        echo %date% %time% [arrancar-tpv] ERROR: fallo npm install >> ".registros\actividad.log"
         pause
         exit /b 1
     )
@@ -97,6 +100,7 @@ if errorlevel 1 (
 
 echo.
 echo   Listo. Abriendo la aplicacion en el navegador...
+echo %date% %time% [arrancar-tpv] Listo, navegador abierto >> ".registros\actividad.log"
 start "" "http://localhost:5173"
 echo.
 echo   IMPORTANTE: no cierres las dos ventanas negras que se han abierto.
@@ -110,6 +114,7 @@ echo.
 echo   La aplicacion tarda mucho mas de lo normal en arrancar ^(mas de 10 minutos^).
 echo   Mira la ventana "TPV - Motor" a ver si muestra algun error.
 echo   Probamos igualmente a abrir el navegador, por si ya esta casi lista:
+echo %date% %time% [arrancar-tpv] AVISO: tardo mas de 10 minutos en responder >> ".registros\actividad.log"
 start "" "http://localhost:5173"
 echo.
 pause
