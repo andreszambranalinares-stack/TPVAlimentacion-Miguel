@@ -162,6 +162,7 @@ export default function Devoluciones() {
               <th className="py-1">Ticket</th>
               <th className="py-1">Hora</th>
               <th className="py-1">Motivo</th>
+              <th className="py-1">Empleado</th>
               <th className="py-1 text-right">Importe</th>
             </tr>
           </thead>
@@ -171,19 +172,20 @@ export default function Devoluciones() {
                 <td className="py-1.5">#{d.ventaId}</td>
                 <td className="py-1.5">{new Date(d.fechaHora).toLocaleTimeString('es-ES')}</td>
                 <td className="py-1.5">{d.motivo ?? '—'}</td>
+                <td className="py-1.5">{d.usuarioNombre ?? '—'}</td>
                 <td className="py-1.5 text-right font-semibold text-red-700">−{euros(d.total)}</td>
               </tr>
             ))}
             {cargandoLista && (
               <tr>
-                <td colSpan={4} className="py-4 text-center text-slate-400">
+                <td colSpan={5} className="py-4 text-center text-slate-400">
                   Cargando…
                 </td>
               </tr>
             )}
             {!cargandoLista && devoluciones.length === 0 && (
               <tr>
-                <td colSpan={4} className="py-4 text-center text-slate-400">
+                <td colSpan={5} className="py-4 text-center text-slate-400">
                   Sin devoluciones hoy.
                 </td>
               </tr>

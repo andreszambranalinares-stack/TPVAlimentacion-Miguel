@@ -24,11 +24,14 @@ public class MovimientoStockServicio {
 
     private final MovimientoStockRepositorio movimientoStockRepositorio;
     private final ProductoRepositorio productoRepositorio;
+    private final UsuarioActualServicio usuarioActualServicio;
 
     public MovimientoStockServicio(MovimientoStockRepositorio movimientoStockRepositorio,
-                                   ProductoRepositorio productoRepositorio) {
+                                   ProductoRepositorio productoRepositorio,
+                                   UsuarioActualServicio usuarioActualServicio) {
         this.movimientoStockRepositorio = movimientoStockRepositorio;
         this.productoRepositorio = productoRepositorio;
+        this.usuarioActualServicio = usuarioActualServicio;
     }
 
     /**
@@ -58,6 +61,7 @@ public class MovimientoStockServicio {
         movimiento.setTipo(entrada.tipo());
         movimiento.setCantidad(delta);
         movimiento.setMotivo(entrada.motivo());
+        movimiento.setUsuario(usuarioActualServicio.obtener());
         return MovimientoStockDTO.desde(movimientoStockRepositorio.save(movimiento));
     }
 

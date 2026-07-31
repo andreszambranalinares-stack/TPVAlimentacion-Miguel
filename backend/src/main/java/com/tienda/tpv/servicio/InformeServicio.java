@@ -1,9 +1,12 @@
 package com.tienda.tpv.servicio;
 
 import com.tienda.tpv.dominio.Devolucion;
+import com.tienda.tpv.dominio.LineaDevolucion;
+import com.tienda.tpv.dominio.LineaVenta;
 import com.tienda.tpv.dominio.MetodoPago;
 import com.tienda.tpv.dominio.Producto;
 import com.tienda.tpv.dominio.Venta;
+import com.tienda.tpv.dto.DesgloseIvaDTO;
 import com.tienda.tpv.dto.InformeVentasDTO;
 import com.tienda.tpv.dto.ProductoVendidoDTO;
 import com.tienda.tpv.dto.ValorInventarioDTO;
@@ -19,11 +22,16 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 @Service
 @Transactional(readOnly = true)
 public class InformeServicio {
+
+    private static final BigDecimal CIEN = new BigDecimal("100");
 
     private final VentaRepositorio ventaRepositorio;
     private final LineaVentaRepositorio lineaVentaRepositorio;
@@ -58,6 +66,8 @@ public class InformeServicio {
         BigDecimal totalIva = BigDecimal.ZERO;
         BigDecimal efectivo = BigDecimal.ZERO;
         BigDecimal tarjeta = BigDecimal.ZERO;
+        // tipo de IVA -> [base imponible, cuota], para el desglose fiscal
+        Map<BigDecimal, BigDecimal[]> porTipo = new TreeMap<>(Comparator.reverseOrder());
         for (Venta venta : ventas) {
             total = total.add(venta.getTotal());
             totalIva = totalIva.add(venta.getTotalIva());
@@ -65,6 +75,9 @@ public class InformeServicio {
                 efectivo = efectivo.add(venta.getTotal());
             } else {
                 tarjeta = tarjeta.add(venta.getTotal());
+            }
+            for (LineaVenta linea : venta.getLineas()) {
+                acumularIva(porTipo, linea.getIvaPorcentaje(), linea.getSubtotal());
             }
         }
 
@@ -76,8 +89,25 @@ public class InformeServicio {
             } else {
                 tarjeta = tarjeta.subtract(devolucion.getTotal());
             }
+            for (LineaDevolucion linea : devolucion.getLineas()) {
+                acumularIva(porTipo, linea.getLineaVenta().getIvaPorcentaje(), linea.getImporte().negate());
+            }
         }
-        return new InformeVentasDTO(d, h, ventas.size(), total, totalIva, efectivo, tarjeta);
+
+        List<DesgloseIvaDTO> desglose = porTipo.entrySet().stream()
+                .map(e -> new DesgloseIvaDTO(e.getKey(), e.getValue()[0], e.getValue()[1]))
+                .toList();
+        return new InformeVentasDTO(d, h, ventas.size(), total, totalIva, efectivo, tarjeta, desglose);
+    }
+
+    /** Suma a "porTipo" la base imponible y la cuota de un importe con IVA incluido (puede ser negativo, p.ej. devoluciones). */
+    private void acumularIva(Map<BigDecimal, BigDecimal[]> porTipo, BigDecimal tipoIva, BigDecimal importeConIva) {
+        BigDecimal cuota = importeConIva.multiply(tipoIva)
+                .divide(CIEN.add(tipoIva), 2, RoundingMode.HALF_UP);
+        BigDecimal base = importeConIva.subtract(cuota);
+        BigDecimal[] acumulado = porTipo.computeIfAbsent(tipoIva, t -> new BigDecimal[] { BigDecimal.ZERO, BigDecimal.ZERO });
+        acumulado[0] = acumulado[0].add(base);
+        acumulado[1] = acumulado[1].add(cuota);
     }
 
     public List<ProductoVendidoDTO> productosMasVendidos(LocalDate desde, LocalDate hasta, int limite) {

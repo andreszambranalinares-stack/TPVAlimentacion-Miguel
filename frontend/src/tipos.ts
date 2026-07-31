@@ -79,6 +79,7 @@ export interface Venta {
   totalIva: number
   metodoPago: MetodoPago
   lineas: LineaVenta[]
+  usuarioNombre: string | null
 }
 
 export interface VentaEntrada {
@@ -94,6 +95,13 @@ export interface MovimientoStock {
   cantidad: number
   motivo: string | null
   fechaHora: string
+  usuarioNombre: string | null
+}
+
+export interface DesgloseIva {
+  tipoIva: number
+  baseImponible: number
+  cuotaIva: number
 }
 
 export interface InformeVentas {
@@ -104,6 +112,7 @@ export interface InformeVentas {
   totalIva: number
   totalEfectivo: number
   totalTarjeta: number
+  desgloseIva: DesgloseIva[]
 }
 
 export interface ProductoVendido {
@@ -165,6 +174,7 @@ export interface CierreCaja {
   notas: string | null
   fechaHora: string
   denominaciones: Denominacion[]
+  usuarioNombre: string | null
 }
 
 export interface LineaDevolucion {
@@ -183,12 +193,27 @@ export interface Devolucion {
   totalIva: number
   motivo: string | null
   lineas: LineaDevolucion[]
+  usuarioNombre: string | null
 }
 
 export interface DevolucionEntrada {
   ventaId: number
   motivo: string | null
   lineas: { lineaVentaId: number; cantidad: number }[]
+}
+
+export interface DatosTienda {
+  nombre: string
+  direccion: string | null
+  telefono: string | null
+  nif: string | null
+}
+
+export interface DatosTiendaEntrada {
+  nombre: string
+  direccion: string | null
+  telefono: string | null
+  nif: string | null
 }
 
 export type EstadoPedido = 'PENDIENTE' | 'RECIBIDO_PARCIAL' | 'RECIBIDO_COMPLETO' | 'CANCELADO'

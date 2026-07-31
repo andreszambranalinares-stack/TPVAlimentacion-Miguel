@@ -5,6 +5,8 @@ import com.tienda.tpv.dominio.MetodoPago;
 import com.tienda.tpv.dominio.Producto;
 import com.tienda.tpv.dominio.UnidadMedida;
 import com.tienda.tpv.dominio.Venta;
+import com.tienda.tpv.dto.DesgloseIvaDTO;
+import com.tienda.tpv.dto.InformeVentasDTO;
 import com.tienda.tpv.dto.ProductoVendidoDTO;
 import com.tienda.tpv.dto.ValorInventarioDTO;
 import com.tienda.tpv.excepciones.ValidacionException;
@@ -43,11 +45,15 @@ class InformeServicioTest {
     private VentaRepositorio ventaRepositorio;
 
     private Producto crearProducto(String nombre, String precioVenta, String precioCoste, String stock, boolean activo) {
+        return crearProducto(nombre, precioVenta, precioCoste, "21", stock, activo);
+    }
+
+    private Producto crearProducto(String nombre, String precioVenta, String precioCoste, String iva, String stock, boolean activo) {
         Producto producto = new Producto();
         producto.setNombre(nombre);
         producto.setPrecioVenta(new BigDecimal(precioVenta));
         producto.setPrecioCoste(new BigDecimal(precioCoste));
-        producto.setIvaPorcentaje(new BigDecimal("21"));
+        producto.setIvaPorcentaje(new BigDecimal(iva));
         producto.setStockActual(new BigDecimal(stock));
         producto.setUnidadMedida(UnidadMedida.UNIDAD);
         producto.setActivo(activo);
@@ -62,6 +68,7 @@ class InformeServicioTest {
         linea.setCantidad(new BigDecimal(cantidad));
         linea.setPrecioUnitario(producto.getPrecioVenta());
         linea.setSubtotal(producto.getPrecioVenta().multiply(new BigDecimal(cantidad)));
+        linea.setIvaPorcentaje(producto.getIvaPorcentaje());
         venta.agregarLinea(linea);
         venta.setTotal(linea.getSubtotal());
         venta.setTotalIva(BigDecimal.ZERO);
@@ -107,6 +114,28 @@ class InformeServicioTest {
         String csv = informeServicio.inventarioCsv();
 
         assertThat(csv).contains("\"Aceite; oliva \"\"virgen\"\"\"");
+    }
+
+    @Test
+    void resumenVentasDesglosaElIvaPorTipo() {
+        Producto pan = crearProducto("Pan", "1.00", "0.50", "21", "100", true);
+        Producto leche = crearProducto("Leche", "1.00", "0.50", "4", "100", true);
+        venderHoy(pan, "10", MetodoPago.EFECTIVO);
+        venderHoy(leche, "5", MetodoPago.TARJETA);
+
+        LocalDate hoy = LocalDate.now();
+        InformeVentasDTO resumen = informeServicio.resumenVentas(hoy, hoy);
+
+        assertThat(resumen.desgloseIva()).hasSize(2);
+        DesgloseIvaDTO iva21 = resumen.desgloseIva().get(0);
+        assertThat(iva21.tipoIva()).isEqualByComparingTo("21");
+        assertThat(iva21.baseImponible()).isEqualByComparingTo("8.26");
+        assertThat(iva21.cuotaIva()).isEqualByComparingTo("1.74");
+
+        DesgloseIvaDTO iva4 = resumen.desgloseIva().get(1);
+        assertThat(iva4.tipoIva()).isEqualByComparingTo("4");
+        assertThat(iva4.baseImponible()).isEqualByComparingTo("4.81");
+        assertThat(iva4.cuotaIva()).isEqualByComparingTo("0.19");
     }
 
     @Test

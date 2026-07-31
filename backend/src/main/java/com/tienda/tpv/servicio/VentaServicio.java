@@ -41,17 +41,20 @@ public class VentaServicio {
     private final MovimientoStockRepositorio movimientoStockRepositorio;
     private final ComponentePackRepositorio componentePackRepositorio;
     private final LineaDevolucionRepositorio lineaDevolucionRepositorio;
+    private final UsuarioActualServicio usuarioActualServicio;
 
     public VentaServicio(VentaRepositorio ventaRepositorio,
                          ProductoRepositorio productoRepositorio,
                          MovimientoStockRepositorio movimientoStockRepositorio,
                          ComponentePackRepositorio componentePackRepositorio,
-                         LineaDevolucionRepositorio lineaDevolucionRepositorio) {
+                         LineaDevolucionRepositorio lineaDevolucionRepositorio,
+                         UsuarioActualServicio usuarioActualServicio) {
         this.ventaRepositorio = ventaRepositorio;
         this.productoRepositorio = productoRepositorio;
         this.movimientoStockRepositorio = movimientoStockRepositorio;
         this.componentePackRepositorio = componentePackRepositorio;
         this.lineaDevolucionRepositorio = lineaDevolucionRepositorio;
+        this.usuarioActualServicio = usuarioActualServicio;
     }
 
     /**
@@ -60,8 +63,10 @@ public class VentaServicio {
      * y deja un movimiento SALIDA por cada línea.
      */
     public VentaDTO crear(VentaEntradaDTO entrada) {
+        var usuario = usuarioActualServicio.obtener();
         Venta venta = new Venta();
         venta.setMetodoPago(entrada.metodoPago());
+        venta.setUsuario(usuario);
 
         BigDecimal total = BigDecimal.ZERO;
         BigDecimal totalIva = BigDecimal.ZERO;
@@ -103,6 +108,7 @@ public class VentaServicio {
             linea.setPrecioUnitario(producto.getPrecioVenta());
             linea.setDescuentoPorcentaje(descuento);
             linea.setSubtotal(subtotal);
+            linea.setIvaPorcentaje(producto.getIvaPorcentaje());
             venta.agregarLinea(linea);
 
             producto.setStockActual(producto.getStockActual().subtract(cantidad));
@@ -126,10 +132,12 @@ public class VentaServicio {
             movimiento.setTipo(TipoMovimiento.SALIDA);
             movimiento.setCantidad(linea.getCantidad().negate());
             movimiento.setMotivo("Venta #" + venta.getId());
+            movimiento.setUsuario(usuario);
             movimientoStockRepositorio.save(movimiento);
         }
         for (MovimientoStock movimiento : movimientosComponentes) {
             movimiento.setMotivo(movimiento.getMotivo() + " — venta #" + venta.getId());
+            movimiento.setUsuario(usuario);
             movimientoStockRepositorio.save(movimiento);
         }
         return VentaDTO.desde(venta);
@@ -173,7 +181,7 @@ public class VentaServicio {
                 .map(l -> LineaVentaDTO.desde(l, lineaDevolucionRepositorio.sumCantidadPorLineaVenta(l.getId())))
                 .toList();
         return new VentaDTO(venta.getId(), venta.getFechaHora(), venta.getTotal(), venta.getTotalIva(),
-                venta.getMetodoPago(), lineas);
+                venta.getMetodoPago(), lineas, venta.getUsuario() != null ? venta.getUsuario().getNombre() : null);
     }
 
     /** Ventas de un rango de fechas (ambas incluidas). Sin parámetros: las de hoy. */

@@ -13,6 +13,7 @@ import Cierre from './paginas/Cierre'
 import Devoluciones from './paginas/Devoluciones'
 import PedidosProveedor from './paginas/PedidosProveedor'
 import Usuarios from './paginas/Usuarios'
+import Ajustes from './paginas/Ajustes'
 
 const enlaces = [
   { ruta: '/caja', texto: 'Caja', soloAdmin: false },
@@ -24,6 +25,7 @@ const enlaces = [
   { ruta: '/informes', texto: 'Informes', soloAdmin: true },
   { ruta: '/cierre', texto: 'Cierre', soloAdmin: true },
   { ruta: '/usuarios', texto: 'Empleados', soloAdmin: true },
+  { ruta: '/ajustes', texto: 'Ajustes', soloAdmin: true },
 ]
 
 export default function App() {
@@ -119,6 +121,7 @@ export default function App() {
             <Route path="/informes" element={esAdmin ? <Informes /> : <Navigate to="/caja" replace />} />
             <Route path="/cierre" element={esAdmin ? <Cierre /> : <Navigate to="/caja" replace />} />
             <Route path="/usuarios" element={esAdmin ? <Usuarios /> : <Navigate to="/caja" replace />} />
+            <Route path="/ajustes" element={esAdmin ? <Ajustes /> : <Navigate to="/caja" replace />} />
           </Routes>
         </main>
       </div>

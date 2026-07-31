@@ -38,6 +38,10 @@ public class LineaVenta {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
 
+    /** Tipo de IVA del producto en el momento de la venta (para informes fiscales fiables aunque cambie después). */
+    @Column(name = "iva_porcentaje", nullable = false, precision = 4, scale = 1)
+    private BigDecimal ivaPorcentaje;
+
     /** Descuento aplicado sobre el precio de esta línea (0-100). Uso reservado a ADMIN. */
     @Column(name = "descuento_porcentaje", nullable = false, precision = 5, scale = 2)
     private BigDecimal descuentoPorcentaje = BigDecimal.ZERO;
@@ -88,6 +92,14 @@ public class LineaVenta {
 
     public void setSubtotal(BigDecimal subtotal) {
         this.subtotal = subtotal;
+    }
+
+    public BigDecimal getIvaPorcentaje() {
+        return ivaPorcentaje;
+    }
+
+    public void setIvaPorcentaje(BigDecimal ivaPorcentaje) {
+        this.ivaPorcentaje = ivaPorcentaje;
     }
 
     public BigDecimal getDescuentoPorcentaje() {
