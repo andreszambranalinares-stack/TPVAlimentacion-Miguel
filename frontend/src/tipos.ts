@@ -59,6 +59,8 @@ export interface Proveedor {
   nombre: string
   telefono: string | null
   contacto: string | null
+  email: string | null
+  direccion: string | null
 }
 
 export interface LineaVenta {

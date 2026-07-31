@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -148,6 +149,20 @@ class PedidoProveedorApiTest {
                 .andExpect(status().isNoContent());
         mockMvc.perform(get("/api/pedidos-proveedor/" + idPedido))
                 .andExpect(jsonPath("$.estado").value("CANCELADO"));
+    }
+
+    @Test
+    void descargarElPdfDevuelveUnPdfValido() throws Exception {
+        long idPedido = crearPedidoDe20();
+
+        MvcResult resultado = mockMvc.perform(get("/api/pedidos-proveedor/" + idPedido + "/pdf"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andReturn();
+
+        byte[] pdf = resultado.getResponse().getContentAsByteArray();
+        String cabecera = new String(pdf, 0, 5, java.nio.charset.StandardCharsets.US_ASCII);
+        org.assertj.core.api.Assertions.assertThat(cabecera).isEqualTo("%PDF-");
     }
 
     private long obtenerPrimeraLineaId(long idPedido) throws Exception {

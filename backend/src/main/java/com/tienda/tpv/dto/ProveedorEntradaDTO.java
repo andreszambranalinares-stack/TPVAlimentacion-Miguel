@@ -1,5 +1,6 @@
 package com.tienda.tpv.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -13,6 +14,13 @@ public record ProveedorEntradaDTO(
         String telefono,
 
         @Size(max = 150, message = "El contacto no puede superar 150 caracteres")
-        String contacto
+        String contacto,
+
+        @Email(message = "El email no es válido")
+        @Size(max = 150, message = "El email no puede superar 150 caracteres")
+        String email,
+
+        @Size(max = 255, message = "La dirección no puede superar 255 caracteres")
+        String direccion
 ) {
 }

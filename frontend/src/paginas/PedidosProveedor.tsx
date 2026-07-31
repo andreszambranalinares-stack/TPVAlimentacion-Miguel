@@ -229,7 +229,18 @@ export default function PedidosProveedor() {
                     {nombresEstado[p.estado]}
                   </span>
                 </td>
-                <td className="p-3 text-right text-blue-600">Ver</td>
+                <td className="p-3 text-right">
+                  <a
+                    href={`/api/pedidos-proveedor/${p.id}/pdf`}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="mr-3 text-blue-600 hover:underline"
+                  >
+                    PDF
+                  </a>
+                  <span className="text-blue-600">Ver</span>
+                </td>
               </tr>
             ))}
             {cargando && (
@@ -267,11 +278,21 @@ export default function PedidosProveedor() {
                   {nombresEstado[seleccionado.estado]}
                 </span>
               </div>
-              {esAdmin && seleccionado.estado === 'PENDIENTE' && (
-                <button onClick={() => cancelar(seleccionado)} className="text-sm text-red-600 hover:underline">
-                  Cancelar pedido
-                </button>
-              )}
+              <div className="flex items-center gap-3">
+                <a
+                  href={`/api/pedidos-proveedor/${seleccionado.id}/pdf`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  Ver PDF
+                </a>
+                {esAdmin && seleccionado.estado === 'PENDIENTE' && (
+                  <button onClick={() => cancelar(seleccionado)} className="text-sm text-red-600 hover:underline">
+                    Cancelar pedido
+                  </button>
+                )}
+              </div>
             </div>
             {seleccionado.notas && <p className="mb-2 text-sm text-slate-500">{seleccionado.notas}</p>}
 

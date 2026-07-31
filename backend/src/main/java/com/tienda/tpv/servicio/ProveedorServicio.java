@@ -35,6 +35,8 @@ public class ProveedorServicio {
 
     public ProveedorDTO crear(ProveedorEntradaDTO entrada) {
         Proveedor proveedor = new Proveedor(entrada.nombre().trim(), entrada.telefono(), entrada.contacto());
+        proveedor.setEmail(entrada.email());
+        proveedor.setDireccion(entrada.direccion());
         return ProveedorDTO.desde(proveedorRepositorio.save(proveedor));
     }
 
@@ -43,6 +45,8 @@ public class ProveedorServicio {
         proveedor.setNombre(entrada.nombre().trim());
         proveedor.setTelefono(entrada.telefono());
         proveedor.setContacto(entrada.contacto());
+        proveedor.setEmail(entrada.email());
+        proveedor.setDireccion(entrada.direccion());
         return ProveedorDTO.desde(proveedor);
     }
 
