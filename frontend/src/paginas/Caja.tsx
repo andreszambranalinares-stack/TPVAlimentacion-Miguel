@@ -1,6 +1,13 @@
 import axios from 'axios'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { buscarProductos, crearVenta, esErrorDeSesionCaducada, mensajeDeError, productoPorCodigoBarras } from '../api'
+import {
+  buscarProductos,
+  crearVenta,
+  esErrorDeSesionCaducada,
+  mensajeDeError,
+  productoPorCodigoBarras,
+  productosBajoMinimo,
+} from '../api'
 import CobroEfectivoModal from '../componentes/CobroEfectivoModal'
 import TicketModal from '../componentes/TicketModal'
 import { useEsAdmin } from '../AuthContexto'
@@ -13,8 +20,30 @@ interface LineaCarrito {
   descuentoPorcentaje: number
 }
 
+interface VentaAparcada {
+  id: string
+  nota: string
+  creadaEn: string
+  carrito: LineaCarrito[]
+}
+
 const subtotalLinea = (l: LineaCarrito) =>
   l.producto.precioVenta * l.cantidad * (1 - l.descuentoPorcentaje / 100)
+
+const CLAVE_APARCADAS = 'tpv-ventas-aparcadas'
+
+const leerAparcadas = (): VentaAparcada[] => {
+  try {
+    const guardado = localStorage.getItem(CLAVE_APARCADAS)
+    return guardado ? (JSON.parse(guardado) as VentaAparcada[]) : []
+  } catch {
+    return []
+  }
+}
+
+const guardarAparcadas = (ventas: VentaAparcada[]) => {
+  localStorage.setItem(CLAVE_APARCADAS, JSON.stringify(ventas))
+}
 
 /**
  * Pantalla de caja pensada para teclado y lector de códigos de barras:
@@ -33,6 +62,10 @@ export default function Caja() {
   const [ticket, setTicket] = useState<Venta | null>(null)
   const [entregadoTicket, setEntregadoTicket] = useState<number | null>(null)
   const [rapidos, setRapidos] = useState<Producto[]>([])
+  const [bajoMinimo, setBajoMinimo] = useState<Producto[]>([])
+  const [avisoStockAbierto, setAvisoStockAbierto] = useState(false)
+  const [aparcadas, setAparcadas] = useState<VentaAparcada[]>(leerAparcadas)
+  const [listaAparcadasAbierta, setListaAparcadasAbierta] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   // Casillas de cantidad del carrito, para saltar a la del producto a peso recién añadido.
   const cantidadRefs = useRef<Record<number, HTMLInputElement | null>>({})
@@ -53,6 +86,20 @@ export default function Caja() {
       .then((lista) => setRapidos(lista.filter((p) => !p.codigoBarras).slice(0, 12)))
       .catch(() => setRapidos([]))
   }, [])
+
+  // Aviso de stock bajo: se comprueba al entrar y cada pocos minutos, para que
+  // el cajero lo vea sin tener que ir a Informes.
+  const cargarBajoMinimo = useCallback(() => {
+    productosBajoMinimo()
+      .then(setBajoMinimo)
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    cargarBajoMinimo()
+    const intervalo = setInterval(cargarBajoMinimo, 5 * 60 * 1000)
+    return () => clearInterval(intervalo)
+  }, [cargarBajoMinimo])
 
   // Un producto a peso se añade con cantidad 1: llevamos el cursor a la casilla
   // de cantidad para que el cajero teclee los kilos directamente.
@@ -134,6 +181,54 @@ export default function Caja() {
     enfocarBuscador()
   }
 
+  // Deja el carrito actual en espera (por ejemplo si el cliente se va a buscar
+  // algo) para poder atender a otro cliente sin perderlo.
+  const aparcarVenta = () => {
+    if (carrito.length === 0) return
+    const nota = prompt('Nombre o nota para esta venta aparcada (opcional):', '')
+    if (nota === null) return // Canceló: no aparcamos nada.
+    const nueva: VentaAparcada = {
+      id: crypto.randomUUID(),
+      nota: nota.trim(),
+      creadaEn: new Date().toISOString(),
+      carrito,
+    }
+    setAparcadas((actual) => {
+      const actualizadas = [...actual, nueva]
+      guardarAparcadas(actualizadas)
+      return actualizadas
+    })
+    setCarrito([])
+    setTextoCantidad({})
+    enfocarBuscador()
+  }
+
+  const recuperarAparcada = (id: string) => {
+    const venta = aparcadas.find((v) => v.id === id)
+    if (!venta) return
+    if (carrito.length > 0 && !confirm('Ya hay una venta en marcha en el carrito. ¿Sustituirla por la aparcada?')) {
+      return
+    }
+    setCarrito(venta.carrito)
+    setTextoCantidad({})
+    setAparcadas((actual) => {
+      const actualizadas = actual.filter((v) => v.id !== id)
+      guardarAparcadas(actualizadas)
+      return actualizadas
+    })
+    setListaAparcadasAbierta(false)
+    enfocarBuscador()
+  }
+
+  const descartarAparcada = (id: string) => {
+    if (!confirm('¿Descartar esta venta aparcada? No se podrá recuperar.')) return
+    setAparcadas((actual) => {
+      const actualizadas = actual.filter((v) => v.id !== id)
+      guardarAparcadas(actualizadas)
+      return actualizadas
+    })
+  }
+
   const alPulsarTecla = async (evento: React.KeyboardEvent<HTMLInputElement>) => {
     if (evento.key === 'ArrowDown') {
       evento.preventDefault()
@@ -180,13 +275,14 @@ export default function Caja() {
         setPidiendoEfectivo(false)
         setCarrito([])
         setTextoCantidad({})
+        cargarBajoMinimo()
       } catch (e) {
         if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
       } finally {
         setCobrando(false)
       }
     },
-    [carrito, cobrando],
+    [carrito, cobrando, cargarBajoMinimo],
   )
 
   const pedirEfectivo = useCallback(() => {
@@ -237,6 +333,31 @@ export default function Caja() {
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <div className="lg:col-span-2">
+        {bajoMinimo.length > 0 && (
+          <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50">
+            <button
+              onClick={() => setAvisoStockAbierto((a) => !a)}
+              className="flex w-full items-center justify-between px-4 py-2 text-left text-sm font-semibold text-amber-800"
+            >
+              <span>
+                ⚠ {bajoMinimo.length} producto{bajoMinimo.length === 1 ? '' : 's'} con poco stock
+              </span>
+              <span className="text-xs underline">{avisoStockAbierto ? 'Ocultar' : 'Ver'}</span>
+            </button>
+            {avisoStockAbierto && (
+              <ul className="border-t border-amber-200 px-4 py-2 text-sm text-amber-900">
+                {bajoMinimo.map((p) => (
+                  <li key={p.id} className="flex justify-between py-0.5">
+                    <span>{p.nombre}</span>
+                    <span className="font-semibold">
+                      {p.stockActual} {p.unidadMedida !== 'UNIDAD' ? p.unidadMedida.toLowerCase() : 'ud.'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
         <div className="relative">
           <input
             ref={inputRef}
@@ -446,7 +567,62 @@ export default function Caja() {
           >
             Vaciar carrito <kbd className="ml-1 rounded bg-slate-400 px-1.5 text-xs text-white">F4</kbd>
           </button>
+          <button
+            onClick={aparcarVenta}
+            disabled={carrito.length === 0}
+            className="rounded-lg border border-slate-300 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40"
+          >
+            Aparcar venta (atender a otro cliente)
+          </button>
         </div>
+
+        {aparcadas.length > 0 && (
+          <div className="mt-4 border-t pt-3">
+            <button
+              onClick={() => setListaAparcadasAbierta((a) => !a)}
+              className="flex w-full items-center justify-between text-left text-sm font-semibold text-slate-700"
+            >
+              <span>
+                🅿️ {aparcadas.length} venta{aparcadas.length === 1 ? '' : 's'} aparcada
+                {aparcadas.length === 1 ? '' : 's'}
+              </span>
+              <span className="text-xs text-blue-600 underline">{listaAparcadasAbierta ? 'Ocultar' : 'Ver'}</span>
+            </button>
+            {listaAparcadasAbierta && (
+              <ul className="mt-2 space-y-2">
+                {aparcadas.map((v) => {
+                  const totalVenta = v.carrito.reduce((suma, l) => suma + subtotalLinea(l), 0)
+                  const hora = new Date(v.creadaEn).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+                  return (
+                    <li key={v.id} className="rounded border p-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">{v.nota || `Venta de las ${hora}`}</span>
+                        <span>{euros(totalVenta)}</span>
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        {v.carrito.length} producto{v.carrito.length === 1 ? '' : 's'} · {hora}
+                      </p>
+                      <div className="mt-1 flex gap-2">
+                        <button
+                          onClick={() => recuperarAparcada(v.id)}
+                          className="rounded bg-amber-500 px-2 py-1 text-xs font-semibold text-white hover:bg-amber-600"
+                        >
+                          Recuperar
+                        </button>
+                        <button
+                          onClick={() => descartarAparcada(v.id)}
+                          className="rounded px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                        >
+                          Descartar
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       {pidiendoEfectivo && (

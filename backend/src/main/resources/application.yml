@@ -7,6 +7,11 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: never # la crea Flyway (V10__spring_session.sql)
+      cleanup-cron: "0 */30 * * * *" # descarta sesiones caducadas cada 30 min
 
 server:
   servlet:

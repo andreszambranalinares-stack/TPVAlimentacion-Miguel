@@ -1,11 +1,11 @@
 package com.tienda.tpv.controlador;
 
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -37,8 +37,10 @@ class AuthApiTest {
                 .andExpect(jsonPath("$.rol").value("ADMIN"))
                 .andReturn();
 
-        MockHttpSession sesion = (MockHttpSession) resultado.getRequest().getSession(false);
-        mockMvc.perform(get("/api/auth/yo").session(sesion))
+        // La sesión la gestiona Spring Session (persistida en BD) a través de la
+        // cookie "SESSION", no del HttpSession nativo del servlet.
+        Cookie cookieSesion = resultado.getResponse().getCookie("SESSION");
+        mockMvc.perform(get("/api/auth/yo").cookie(cookieSesion))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nombreUsuario").value("admin"));
     }
