@@ -40,13 +40,19 @@ echo   [3/4] Arrancando el motor y la pantalla...
 start "TPV - Motor (no cerrar)" cmd /k "cd /d "%~dp0backend" && mvnw.cmd spring-boot:run"
 start "TPV - Pantalla (no cerrar)" cmd /k "cd /d "%~dp0frontend" && npm run dev"
 
-REM --- 4. Esperar a que el motor responda y abrir el navegador ----------
-echo   [4/4] Esperando a que el motor arranque (puede tardar 1 minuto)...
+REM --- 4. Esperar a que el motor Y la pantalla respondan, y abrir el navegador
+REM IMPORTANTE: hay que esperar a los DOS puertos (8080 motor, 5173 pantalla).
+REM La pantalla arranca casi al instante, pero el motor (Java) tarda más,
+REM sobre todo la primera vez que hay dependencias nuevas que descargar.
+REM Si solo se espera a la pantalla, el navegador se abre antes de que el
+REM motor esté listo y salen errores "ECONNREFUSED" en la consola hasta que
+REM termina de arrancar (no son un fallo real, solo hay que esperar más).
+echo   [4/4] Esperando a que el motor y la pantalla arranquen (puede tardar 1-2 minutos)...
 set /a intentos=0
 :esperar
 set /a intentos+=1
-if %intentos% gtr 120 goto sinrespuesta
-powershell -NoProfile -Command "try { $r = Invoke-WebRequest -Uri 'http://localhost:5173' -UseBasicParsing -TimeoutSec 2; exit 0 } catch { exit 1 }" >nul 2>&1
+if %intentos% gtr 180 goto sinrespuesta
+powershell -NoProfile -Command "try { $m = New-Object System.Net.Sockets.TcpClient; $m.Connect('localhost',8080); $m.Close(); $p = New-Object System.Net.Sockets.TcpClient; $p.Connect('localhost',5173); $p.Close(); exit 0 } catch { exit 1 }" >nul 2>&1
 if errorlevel 1 (
     timeout /t 1 /nobreak >nul
     goto esperar
