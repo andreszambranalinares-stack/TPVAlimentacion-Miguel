@@ -19,6 +19,7 @@ Para el ordenador de la tienda hay scripts que evitan tener que usar la terminal
 | `arrancar-tpv` | Arranca PostgreSQL, backend y frontend, y abre el navegador. |
 | `parar-tpv` | Cierra backend y frontend. |
 | `copia-seguridad` | Vuelca la base de datos a `copias/tpv_<fecha>.sql` y descarta las de más de 60 días. |
+| `crear-accesos-directos.bat` (solo Windows, una vez) | Crea en el escritorio accesos directos a los tres scripts anteriores con el icono de la app (`icono-tpv.ico`), para no tener que abrir la carpeta cada vez. |
 
 El resto de esta sección describe el flujo de desarrollo.
 
