@@ -14,6 +14,12 @@ spring:
       cleanup-cron: "0 */30 * * * *" # descarta sesiones caducadas cada 30 min
 
 server:
+  # Solo escucha en este mismo ordenador (no en el resto de la red/wifi de la
+  # tienda). La app siempre se usa desde el navegador del propio PC donde
+  # corre el motor (arrancar-tpv.bat la abre así), así que no hace falta
+  # exponerla a la red, y evita que cualquier otro dispositivo del wifi
+  # pueda llegar a la API o a la documentación técnica (Swagger).
+  address: 127.0.0.1
   servlet:
     session:
       cookie:

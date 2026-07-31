@@ -1,6 +1,8 @@
 #!/bin/bash
 # Cierra el TPV en macOS.
 cd "$(dirname "$0")" || exit 1
+mkdir -p .registros
+echo "$(date) [parar-tpv] Cerrando la aplicación" >> .registros/actividad.log
 
 echo
 echo "  Cerrando la aplicación..."
@@ -26,8 +28,18 @@ for nombre in motor pantalla; do
 done
 
 echo "  Aplicación cerrada. La base de datos sigue en marcha (no molesta)."
+echo "$(date) [parar-tpv] Aplicación cerrada" >> .registros/actividad.log
 echo
-echo "  Recuerda hacer la copia de seguridad de vez en cuando:"
-echo "  ejecuta copia-seguridad.command."
+
+# Copia de seguridad automática al cerrar, sin que haya que acordarse.
+# Si falla, queda anotado en .registros/actividad.log (no interrumpe el cierre).
+echo "  Guardando una copia de seguridad..."
+if "$(dirname "$0")/copia-seguridad-automatica.command"; then
+  echo "  Copia de seguridad guardada."
+else
+  echo "  AVISO: la copia de seguridad automática ha fallado esta vez."
+  echo "  Puedes intentarlo a mano con copia-seguridad.command, o mira"
+  echo "  .registros/actividad.log para ver el detalle."
+fi
 echo
 sleep 4

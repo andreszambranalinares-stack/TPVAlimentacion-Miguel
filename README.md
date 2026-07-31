@@ -17,11 +17,29 @@ Para el ordenador de la tienda hay scripts que evitan tener que usar la terminal
 | Script | Qué hace |
 | --- | --- |
 | `arrancar-tpv` | Arranca PostgreSQL, backend y frontend, y abre el navegador. |
-| `parar-tpv` | Cierra backend y frontend. |
-| `copia-seguridad` | Vuelca la base de datos a `copias/tpv_<fecha>.sql` y descarta las de más de 60 días. |
-| `crear-accesos-directos.bat` (solo Windows, una vez) | Crea en el escritorio accesos directos a los tres scripts anteriores con el icono de la app (`icono-tpv.ico`), para no tener que abrir la carpeta cada vez. |
+| `parar-tpv` | Cierra backend y frontend, y hace una copia de seguridad automática antes de terminar (no hace falta acordarse). |
+| `copia-seguridad` | Copia de seguridad manual, a mano: vuelca la base de datos a `copias/tpv_<fecha>.sql` y descarta las de más de 60 días. Útil antes de un cambio importante, además de la automática de `parar-tpv`. |
+| `copia-seguridad-automatica` | Versión silenciosa (sin ventanas ni esperas) que usa `parar-tpv` internamente. No hace falta ejecutarla a mano. |
+| `crear-accesos-directos.bat` (solo Windows, una vez) | Crea en el escritorio accesos directos a `arrancar-tpv`/`parar-tpv`/`copia-seguridad` con el icono de la app (`icono-tpv.ico`), para no tener que abrir la carpeta cada vez. |
+
+Cada arranque y cierre, y cada copia de seguridad, queda anotado en
+`.registros/actividad.log` (con fecha y hora) para poder revisar qué pasó si
+algún día algo falla.
 
 El resto de esta sección describe el flujo de desarrollo.
+
+## Antes de abrir la tienda con esta app (checklist)
+
+1. **Cambia las contraseñas por defecto** (`admin/admin123`, `caja/caja123`,
+   ver más abajo): desde "Empleados" en la app, con el usuario admin.
+2. El motor solo escucha en el propio ordenador (`server.address: 127.0.0.1`
+   en `application.yml`), no en el resto de la red/wifi de la tienda — no
+   hace falta tocar nada, ya viene así de fábrica.
+3. Sube el catálogo real de productos (pantalla "Productos" → "Importar
+   CSV") y confirma que no queda ningún producto de prueba.
+4. Prueba el lector de código de barras y la impresora de tickets con el
+   hardware real de la tienda antes del primer día — todavía no se ha
+   probado con hardware físico, solo en navegador.
 
 ## Requisitos
 
