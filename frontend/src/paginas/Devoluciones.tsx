@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { crearDevolucion, esErrorDeSesionCaducada, listarDevoluciones, mensajeDeError, obtenerVenta } from '../api'
-import { euros } from '../utils'
+import { euros, seleccionarAlFoco } from '../utils'
 import type { Devolucion, Venta } from '../tipos'
 
 /** Devolución total o parcial de una venta ya cobrada: repone el stock automáticamente. */
@@ -82,6 +82,7 @@ export default function Devoluciones() {
               autoFocus
               value={numeroTicket}
               onChange={(e) => setNumeroTicket(e.target.value)}
+              onFocus={seleccionarAlFoco}
               placeholder="p. ej. 128"
               className="w-full rounded border p-2"
             />
@@ -127,6 +128,7 @@ export default function Devoluciones() {
                           disabled={disponible <= 0}
                           value={cantidades[l.id] ?? ''}
                           onChange={(e) => setCantidades((actual) => ({ ...actual, [l.id]: e.target.value }))}
+                          onFocus={seleccionarAlFoco}
                           aria-label={`Cantidad a devolver de ${l.productoNombre}`}
                           className="w-20 rounded border p-1 text-center disabled:bg-slate-100"
                         />

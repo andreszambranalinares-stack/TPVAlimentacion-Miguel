@@ -8,6 +8,7 @@ import {
   registrarMovimiento,
 } from '../api'
 import { useEsAdmin } from '../AuthContexto'
+import { seleccionarAlFoco } from '../utils'
 import type { MovimientoStock, Producto, Proveedor, TipoMovimiento } from '../tipos'
 
 const nombresTipo: Record<TipoMovimiento, string> = {
@@ -201,6 +202,7 @@ export default function Stock() {
                     step="any"
                     value={cantidad}
                     onChange={(e) => setCantidad(e.target.value)}
+                    onFocus={seleccionarAlFoco}
                     className="w-full rounded border p-2"
                   />
                 </label>

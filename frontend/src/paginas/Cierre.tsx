@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { cerrarCaja, esErrorDeSesionCaducada, informeVentas, listarCierres, mensajeDeError } from '../api'
-import { euros, hoy } from '../utils'
+import { euros, hoy, seleccionarAlFoco } from '../utils'
 import type { CierreCaja, InformeVentas } from '../tipos'
 
 /** Billetes y monedas de euro, de mayor a menor valor. */
@@ -164,6 +164,7 @@ export default function Cierre() {
                       step="1"
                       value={cantidades[valor] ?? ''}
                       onChange={(e) => cambiarCantidadDenominacion(valor, e.target.value)}
+                      onFocus={seleccionarAlFoco}
                       aria-label={`Cantidad de billetes/monedas de ${euros(valor)}`}
                       className="w-full rounded border p-1 text-center"
                     />
@@ -182,6 +183,7 @@ export default function Cierre() {
                 readOnly={contarPorDenominacion}
                 value={efectivoContado}
                 onChange={(e) => setEfectivoContado(e.target.value)}
+                onFocus={seleccionarAlFoco}
                 className={`w-full rounded border p-2 ${contarPorDenominacion ? 'bg-slate-100' : ''}`}
               />
             </label>
