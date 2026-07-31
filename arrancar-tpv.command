@@ -28,11 +28,13 @@ echo $! > .registros/pantalla.pid
 
 # IMPORTANTE: hay que esperar a los DOS puertos (8080 motor, 5173 pantalla).
 # La pantalla arranca casi al instante, pero el motor (Java) tarda más, sobre
-# todo la primera vez que hay dependencias nuevas que descargar. Si solo se
-# espera a la pantalla, el navegador se abre antes de que el motor esté listo
-# y salen errores "ECONNREFUSED" en la consola hasta que termina de arrancar.
-echo "  [4/4] Esperando a que el motor y la pantalla arranquen (puede tardar 1-2 minutos)..."
-for _ in $(seq 1 180); do
+# todo la primerísima vez: Maven tiene que descargarse TODAS las librerías
+# (no solo las nuevas), y eso puede tardar varios minutos según la conexión
+# a internet de la tienda. Le damos hasta 10 minutos, avisando cada 15
+# segundos para que no parezca que se ha quedado colgado.
+echo "  [4/4] Esperando a que el motor y la pantalla arranquen..."
+echo "  (la primera vez puede tardar varios minutos: Maven se descarga las librerías)"
+for i in $(seq 1 600); do
   if curl -s -o /dev/null http://localhost:8080/api/auth/yo && curl -s -o /dev/null http://localhost:5173; then
     echo
     echo "  Listo. Abriendo la aplicación en el navegador..."
@@ -44,11 +46,16 @@ for _ in $(seq 1 180); do
     wait
     exit 0
   fi
+  if [ $((i % 15)) -eq 0 ]; then
+    echo "  ...todavía arrancando, un momento más ($i segundos)..."
+  fi
   sleep 1
 done
 
 echo
-echo "  La aplicación tarda más de lo normal en arrancar."
+echo "  La aplicación tarda mucho más de lo normal en arrancar (más de 10 minutos)."
 echo "  Revisa .registros/motor.log por si hay algún error."
+echo "  Probamos igualmente a abrir el navegador, por si ya está casi lista:"
+open "http://localhost:5173"
 read -r
 exit 1
