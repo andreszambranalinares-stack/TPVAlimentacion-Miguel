@@ -73,6 +73,10 @@ public class MovimientoStockServicio {
     }
 
     private BigDecimal calcularDelta(TipoMovimiento tipo, BigDecimal cantidad) {
+        if (tipo == TipoMovimiento.DEVOLUCION) {
+            throw new ValidacionException(
+                    "Las devoluciones se registran desde la venta original, no como movimiento manual");
+        }
         if (tipo == TipoMovimiento.AJUSTE) {
             if (cantidad.signum() == 0) {
                 throw new ValidacionException("El ajuste no puede ser cero");

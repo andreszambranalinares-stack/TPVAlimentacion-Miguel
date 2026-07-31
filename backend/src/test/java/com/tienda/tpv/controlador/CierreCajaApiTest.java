@@ -120,4 +120,37 @@ class CierreCajaApiTest {
                 .contains("Barra de pan")
                 .contains(";25;");
     }
+
+    @Test
+    void elConteoPorDenominacionQueCoincideConElTotalSeAceptaYSeGuarda() throws Exception {
+        // 1 billete de 2 € + 1 moneda de 1 € = 3,00 €, coincide con lo esperado en efectivo
+        mockMvc.perform(post("/api/cierres-caja")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "efectivoContado": 3.00,
+                                  "denominaciones": [
+                                    { "valor": 2, "cantidad": 1 },
+                                    { "valor": 1, "cantidad": 1 }
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.denominaciones", org.hamcrest.Matchers.hasSize(2)));
+    }
+
+    @Test
+    void elConteoPorDenominacionQueNoCoincideDevuelve400() throws Exception {
+        // 1 moneda de 1 € = 1,00 €, pero dice que ha contado 3,00 €
+        mockMvc.perform(post("/api/cierres-caja")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "efectivoContado": 3.00,
+                                  "denominaciones": [ { "valor": 1, "cantidad": 1 } ]
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("VALIDACION"));
+    }
 }

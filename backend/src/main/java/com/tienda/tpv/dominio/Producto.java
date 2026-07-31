@@ -57,6 +57,10 @@ public class Producto {
     @Column(nullable = false)
     private boolean activo = true;
 
+    /** Si es true, al venderlo se descuenta también el stock de sus componentes. */
+    @Column(name = "es_pack", nullable = false)
+    private boolean esPack = false;
+
     @Version
     @Column(nullable = false)
     private Long version;
@@ -151,5 +155,13 @@ public class Producto {
 
     public Long getVersion() {
         return version;
+    }
+
+    public boolean isEsPack() {
+        return esPack;
+    }
+
+    public void setEsPack(boolean esPack) {
+        this.esPack = esPack;
     }
 }

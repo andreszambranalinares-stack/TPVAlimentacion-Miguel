@@ -1,8 +1,10 @@
 package com.tienda.tpv.servicio;
 
 import com.tienda.tpv.dominio.CierreCaja;
+import com.tienda.tpv.dominio.DenominacionCierre;
 import com.tienda.tpv.dto.CierreCajaDTO;
 import com.tienda.tpv.dto.CierreCajaEntradaDTO;
+import com.tienda.tpv.dto.DenominacionEntradaDTO;
 import com.tienda.tpv.dto.InformeVentasDTO;
 import com.tienda.tpv.excepciones.ConflictoException;
 import com.tienda.tpv.excepciones.ValidacionException;
@@ -11,6 +13,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -39,6 +42,18 @@ public class CierreCajaServicio {
             throw new ConflictoException("La caja del " + fecha + " ya está cerrada");
         }
 
+        if (entrada.denominaciones() != null && !entrada.denominaciones().isEmpty()) {
+            BigDecimal sumaDenominaciones = entrada.denominaciones().stream()
+                    .map(d -> d.valor().multiply(BigDecimal.valueOf(d.cantidad())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (sumaDenominaciones.setScale(2, java.math.RoundingMode.HALF_UP)
+                    .compareTo(entrada.efectivoContado().setScale(2, java.math.RoundingMode.HALF_UP)) != 0) {
+                throw new ValidacionException(
+                        "El conteo por billetes y monedas (" + sumaDenominaciones
+                                + " €) no coincide con el efectivo contado (" + entrada.efectivoContado() + " €)");
+            }
+        }
+
         InformeVentasDTO resumen = informeServicio.resumenVentas(fecha, fecha);
         CierreCaja cierre = new CierreCaja();
         cierre.setFecha(fecha);
@@ -49,6 +64,17 @@ public class CierreCajaServicio {
         cierre.setEfectivoContado(entrada.efectivoContado());
         cierre.setDiferencia(entrada.efectivoContado().subtract(resumen.totalEfectivo()));
         cierre.setNotas(entrada.notas());
+        if (entrada.denominaciones() != null) {
+            for (DenominacionEntradaDTO d : entrada.denominaciones()) {
+                if (d.cantidad() == 0) {
+                    continue;
+                }
+                DenominacionCierre denominacion = new DenominacionCierre();
+                denominacion.setValor(d.valor());
+                denominacion.setCantidad(d.cantidad());
+                cierre.agregarDenominacion(denominacion);
+            }
+        }
         return CierreCajaDTO.desde(cierreCajaRepositorio.save(cierre));
     }
 

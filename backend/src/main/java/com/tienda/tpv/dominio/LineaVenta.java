@@ -38,6 +38,10 @@ public class LineaVenta {
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
 
+    /** Descuento aplicado sobre el precio de esta línea (0-100). Uso reservado a ADMIN. */
+    @Column(name = "descuento_porcentaje", nullable = false, precision = 5, scale = 2)
+    private BigDecimal descuentoPorcentaje = BigDecimal.ZERO;
+
     public Long getId() {
         return id;
     }
@@ -84,5 +88,13 @@ public class LineaVenta {
 
     public void setSubtotal(BigDecimal subtotal) {
         this.subtotal = subtotal;
+    }
+
+    public BigDecimal getDescuentoPorcentaje() {
+        return descuentoPorcentaje;
+    }
+
+    public void setDescuentoPorcentaje(BigDecimal descuentoPorcentaje) {
+        this.descuentoPorcentaje = descuentoPorcentaje;
     }
 }

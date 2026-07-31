@@ -1,15 +1,19 @@
 package com.tienda.tpv.dominio;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "cierre_caja")
@@ -47,6 +51,15 @@ public class CierreCaja {
 
     @Column(name = "fecha_hora", nullable = false)
     private LocalDateTime fechaHora = LocalDateTime.now();
+
+    /** Desglose opcional del efectivo contado por billete/moneda. */
+    @OneToMany(mappedBy = "cierreCaja", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DenominacionCierre> denominaciones = new ArrayList<>();
+
+    public void agregarDenominacion(DenominacionCierre denominacion) {
+        denominacion.setCierreCaja(this);
+        denominaciones.add(denominacion);
+    }
 
     public Long getId() {
         return id;
@@ -126,5 +139,13 @@ public class CierreCaja {
 
     public void setFechaHora(LocalDateTime fechaHora) {
         this.fechaHora = fechaHora;
+    }
+
+    public List<DenominacionCierre> getDenominaciones() {
+        return denominaciones;
+    }
+
+    public void setDenominaciones(List<DenominacionCierre> denominaciones) {
+        this.denominaciones = denominaciones;
     }
 }

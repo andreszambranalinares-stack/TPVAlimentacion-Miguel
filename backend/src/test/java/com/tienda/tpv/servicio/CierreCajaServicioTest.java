@@ -37,7 +37,7 @@ class CierreCajaServicioTest {
     @Test
     void cerrarFechaFuturaLanzaValidacionSinTocarElRepositorio() {
         CierreCajaEntradaDTO entrada = new CierreCajaEntradaDTO(
-                LocalDate.now().plusDays(1), new BigDecimal("10"), null);
+                LocalDate.now().plusDays(1), new BigDecimal("10"), null, null);
 
         assertThatThrownBy(() -> cierreCajaServicio.cerrar(entrada))
                 .isInstanceOf(ValidacionException.class);
@@ -55,7 +55,7 @@ class CierreCajaServicioTest {
         when(cierreCajaRepositorio.save(any(CierreCaja.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CierreCajaDTO cierre = cierreCajaServicio.cerrar(
-                new CierreCajaEntradaDTO(fecha, new BigDecimal("0"), "Día sin ventas"));
+                new CierreCajaEntradaDTO(fecha, new BigDecimal("0"), "Día sin ventas", null));
 
         assertThat(cierre.numeroVentas()).isZero();
         assertThat(cierre.diferencia()).isEqualByComparingTo("0");
