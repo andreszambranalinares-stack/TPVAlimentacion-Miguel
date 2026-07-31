@@ -10,8 +10,13 @@ import {
   mensajeDeError,
 } from '../api'
 import { useEsAdmin } from '../AuthContexto'
-import { euros } from '../utils'
+import { euros, normalizarTexto, parsearProductosCsv } from '../utils'
 import type { Categoria, Producto, ProductoEntrada, UnidadMedida } from '../tipos'
+
+interface ResultadoImportacion {
+  creados: number
+  errores: { fila: number; motivo: string }[]
+}
 
 const formularioVacio: ProductoEntrada = {
   nombre: '',
@@ -47,6 +52,9 @@ export default function Productos() {
   const [componenteAAgregar, setComponenteAAgregar] = useState<number | ''>('')
   const [cantidadComponente, setCantidadComponente] = useState('1')
   const nombreRef = useRef<HTMLInputElement>(null)
+  const archivoCsvRef = useRef<HTMLInputElement>(null)
+  const [importando, setImportando] = useState(false)
+  const [resultadoImportacion, setResultadoImportacion] = useState<ResultadoImportacion | null>(null)
 
   const cargar = useCallback(() => {
     setCargando(true)
@@ -166,6 +174,57 @@ export default function Productos() {
     }
   }
 
+  const importarCsv = async (evento: React.ChangeEvent<HTMLInputElement>) => {
+    const archivo = evento.target.files?.[0]
+    evento.target.value = ''
+    if (!archivo) return
+
+    const texto = await archivo.text()
+    const { productos: filas, invalidas } = parsearProductosCsv(texto)
+
+    if (filas.length === 0 && invalidas.length === 0) {
+      setError('El archivo no tiene productos que importar. Revisa que tenga cabecera y al menos una fila.')
+      return
+    }
+
+    setImportando(true)
+    setError('')
+    const errores: { fila: number; motivo: string }[] = invalidas.map((i) => ({ fila: i.fila, motivo: i.motivo }))
+    let creados = 0
+
+    // Cache local de categorías para no crear la misma dos veces durante la importación.
+    const categoriasPorNombre = new Map(categorias.map((c) => [normalizarTexto(c.nombre), c.id]))
+
+    for (let i = 0; i < filas.length; i++) {
+      const { categoriaNombre, ...datos } = filas[i]
+      try {
+        let categoriaId: number | null = null
+        if (categoriaNombre) {
+          const clave = normalizarTexto(categoriaNombre)
+          categoriaId = categoriasPorNombre.get(clave) ?? null
+          if (categoriaId === null) {
+            const creada = await crearCategoria(categoriaNombre)
+            categoriaId = creada.id
+            categoriasPorNombre.set(clave, creada.id)
+            setCategorias((actual) => [...actual, creada].sort((a, b) => a.nombre.localeCompare(b.nombre)))
+          }
+        }
+        await crearProducto({ ...datos, categoriaId })
+        creados++
+      } catch (e) {
+        if (esErrorDeSesionCaducada(e)) {
+          setImportando(false)
+          return
+        }
+        errores.push({ fila: i + 2, motivo: `"${datos.nombre}": ${mensajeDeError(e)}` })
+      }
+    }
+
+    setImportando(false)
+    setResultadoImportacion({ creados, errores })
+    if (creados > 0) cargar()
+  }
+
   const campo = 'w-full rounded border p-2'
 
   return (
@@ -194,12 +253,28 @@ export default function Productos() {
           Ver dados de baja
         </label>
         {esAdmin && (
-          <button
-            onClick={abrirAlta}
-            className="ml-auto rounded-lg bg-amber-500 px-4 py-2 font-semibold text-white hover:bg-amber-600"
-          >
-            + Nuevo producto
-          </button>
+          <div className="ml-auto flex gap-2">
+            <input
+              ref={archivoCsvRef}
+              type="file"
+              accept=".csv,text/csv"
+              onChange={importarCsv}
+              className="hidden"
+            />
+            <button
+              onClick={() => archivoCsvRef.current?.click()}
+              disabled={importando}
+              className="rounded-lg border border-amber-500 px-4 py-2 font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+            >
+              {importando ? 'Importando…' : 'Importar CSV'}
+            </button>
+            <button
+              onClick={abrirAlta}
+              className="rounded-lg bg-amber-500 px-4 py-2 font-semibold text-white hover:bg-amber-600"
+            >
+              + Nuevo producto
+            </button>
+          </div>
         )}
       </div>
 
@@ -506,6 +581,41 @@ export default function Productos() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {resultadoImportacion && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[85vh] w-full max-w-md overflow-auto rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="mb-3 text-xl font-bold">Importación de productos</h2>
+            <p className="mb-3 rounded bg-green-100 px-3 py-2 text-green-800">
+              {resultadoImportacion.creados} producto{resultadoImportacion.creados === 1 ? '' : 's'} creado
+              {resultadoImportacion.creados === 1 ? '' : 's'} correctamente.
+            </p>
+            {resultadoImportacion.errores.length > 0 && (
+              <div className="rounded bg-red-100 px-3 py-2 text-red-800">
+                <p className="mb-1 font-semibold">
+                  {resultadoImportacion.errores.length} fila{resultadoImportacion.errores.length === 1 ? '' : 's'} con
+                  errores:
+                </p>
+                <ul className="list-inside list-disc space-y-0.5 text-sm">
+                  {resultadoImportacion.errores.map((e, i) => (
+                    <li key={i}>
+                      Fila {e.fila}: {e.motivo}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div className="mt-5 flex justify-end">
+              <button
+                onClick={() => setResultadoImportacion(null)}
+                className="rounded bg-amber-500 px-4 py-2 font-semibold text-white hover:bg-amber-600"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
