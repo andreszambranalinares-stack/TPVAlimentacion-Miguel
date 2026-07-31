@@ -10,6 +10,7 @@ import com.tienda.tpv.excepciones.ConflictoException;
 import com.tienda.tpv.excepciones.RecursoNoEncontradoException;
 import com.tienda.tpv.excepciones.ValidacionException;
 import com.tienda.tpv.repositorio.CategoriaRepositorio;
+import com.tienda.tpv.repositorio.ComponentePackRepositorio;
 import com.tienda.tpv.repositorio.MovimientoStockRepositorio;
 import com.tienda.tpv.repositorio.ProductoRepositorio;
 import org.junit.jupiter.api.Test;
@@ -41,13 +42,16 @@ class ProductoServicioTest {
     @Mock
     private MovimientoStockRepositorio movimientoStockRepositorio;
 
+    @Mock
+    private ComponentePackRepositorio componentePackRepositorio;
+
     @InjectMocks
     private ProductoServicio productoServicio;
 
     private ProductoEntradaDTO entradaValida(String codigoBarras, BigDecimal stockInicial) {
         return new ProductoEntradaDTO("Leche entera 1L", codigoBarras, null,
                 new BigDecimal("1.10"), new BigDecimal("0.80"), new BigDecimal("4"),
-                new BigDecimal("6"), stockInicial, UnidadMedida.UNIDAD, true);
+                new BigDecimal("6"), stockInicial, UnidadMedida.UNIDAD, true, false, null);
     }
 
     @Test
@@ -81,7 +85,7 @@ class ProductoServicioTest {
     void crearProductoConIvaInvalidoLanzaValidacion() {
         ProductoEntradaDTO entrada = new ProductoEntradaDTO("Pan", null, null,
                 new BigDecimal("0.50"), null, new BigDecimal("7"),
-                null, null, UnidadMedida.UNIDAD, true);
+                null, null, UnidadMedida.UNIDAD, true, false, null);
 
         assertThatThrownBy(() -> productoServicio.crear(entrada))
                 .isInstanceOf(ValidacionException.class)

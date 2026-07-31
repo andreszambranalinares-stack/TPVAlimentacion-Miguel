@@ -1,15 +1,19 @@
 package com.tienda.tpv.servicio;
 
 import com.tienda.tpv.dominio.Categoria;
+import com.tienda.tpv.dominio.ComponentePack;
 import com.tienda.tpv.dominio.MovimientoStock;
 import com.tienda.tpv.dominio.Producto;
 import com.tienda.tpv.dominio.TipoMovimiento;
+import com.tienda.tpv.dto.ComponentePackDTO;
+import com.tienda.tpv.dto.ComponentePackEntradaDTO;
 import com.tienda.tpv.dto.ProductoDTO;
 import com.tienda.tpv.dto.ProductoEntradaDTO;
 import com.tienda.tpv.excepciones.ConflictoException;
 import com.tienda.tpv.excepciones.RecursoNoEncontradoException;
 import com.tienda.tpv.excepciones.ValidacionException;
 import com.tienda.tpv.repositorio.CategoriaRepositorio;
+import com.tienda.tpv.repositorio.ComponentePackRepositorio;
 import com.tienda.tpv.repositorio.MovimientoStockRepositorio;
 import com.tienda.tpv.repositorio.ProductoRepositorio;
 import org.springframework.data.domain.Sort;
@@ -30,13 +34,16 @@ public class ProductoServicio {
     private final ProductoRepositorio productoRepositorio;
     private final CategoriaRepositorio categoriaRepositorio;
     private final MovimientoStockRepositorio movimientoStockRepositorio;
+    private final ComponentePackRepositorio componentePackRepositorio;
 
     public ProductoServicio(ProductoRepositorio productoRepositorio,
                             CategoriaRepositorio categoriaRepositorio,
-                            MovimientoStockRepositorio movimientoStockRepositorio) {
+                            MovimientoStockRepositorio movimientoStockRepositorio,
+                            ComponentePackRepositorio componentePackRepositorio) {
         this.productoRepositorio = productoRepositorio;
         this.categoriaRepositorio = categoriaRepositorio;
         this.movimientoStockRepositorio = movimientoStockRepositorio;
+        this.componentePackRepositorio = componentePackRepositorio;
     }
 
     @Transactional(readOnly = true)
@@ -51,29 +58,29 @@ public class ProductoServicio {
                 .filter(p -> incluirInactivos || p.isActivo())
                 .filter(p -> categoriaId == null
                         || (p.getCategoria() != null && categoriaId.equals(p.getCategoria().getId())))
-                .map(ProductoDTO::desde)
+                .map(this::construirDTO)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public ProductoDTO obtener(Long id) {
-        return ProductoDTO.desde(buscarPorId(id));
+        return construirDTO(buscarPorId(id));
     }
 
     /** Búsqueda exacta para el lector de códigos de barras de la caja. */
     @Transactional(readOnly = true)
     public ProductoDTO obtenerPorCodigoBarras(String codigoBarras) {
-        return productoRepositorio.findByCodigoBarras(codigoBarras)
+        Producto producto = productoRepositorio.findByCodigoBarras(codigoBarras)
                 .filter(Producto::isActivo)
-                .map(ProductoDTO::desde)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No existe ningún producto activo con código de barras " + codigoBarras));
+        return construirDTO(producto);
     }
 
     @Transactional(readOnly = true)
     public List<ProductoDTO> listarBajoMinimo() {
         return productoRepositorio.findBajoStockMinimo().stream()
-                .map(ProductoDTO::desde)
+                .map(this::construirDTO)
                 .toList();
     }
 
@@ -101,7 +108,9 @@ public class ProductoServicio {
             movimiento.setMotivo("Stock inicial en el alta del producto");
             movimientoStockRepositorio.save(movimiento);
         }
-        return ProductoDTO.desde(producto);
+
+        List<ComponentePackDTO> componentes = guardarComponentes(producto, entrada);
+        return ProductoDTO.desde(producto, componentes);
     }
 
     public ProductoDTO actualizar(Long id, ProductoEntradaDTO entrada) {
@@ -117,7 +126,8 @@ public class ProductoServicio {
         }
         // El stock actual no se toca aquí: solo cambia con ventas y movimientos.
         aplicarEntrada(producto, entrada, codigoBarras);
-        return ProductoDTO.desde(producto);
+        List<ComponentePackDTO> componentes = guardarComponentes(producto, entrada);
+        return ProductoDTO.desde(producto, componentes);
     }
 
     /** Baja lógica: el producto deja de venderse pero conserva su histórico. */
@@ -135,6 +145,49 @@ public class ProductoServicio {
         producto.setStockMinimo(entrada.stockMinimo() != null ? entrada.stockMinimo() : BigDecimal.ZERO);
         producto.setUnidadMedida(entrada.unidadMedida());
         producto.setActivo(entrada.activo() == null || entrada.activo());
+        producto.setEsPack(Boolean.TRUE.equals(entrada.esPack()));
+    }
+
+    /** Reemplaza la lista de componentes del pack; si no es un pack, la deja vacía. */
+    private List<ComponentePackDTO> guardarComponentes(Producto producto, ProductoEntradaDTO entrada) {
+        if (producto.getId() != null) {
+            componentePackRepositorio.deleteByPackId(producto.getId());
+        }
+        if (!producto.isEsPack() || entrada.componentes() == null || entrada.componentes().isEmpty()) {
+            return List.of();
+        }
+        return entrada.componentes().stream()
+                .map(c -> guardarComponente(producto, c))
+                .map(ComponentePackDTO::desde)
+                .toList();
+    }
+
+    private ComponentePack guardarComponente(Producto pack, ComponentePackEntradaDTO entrada) {
+        if (entrada.productoId().equals(pack.getId())) {
+            throw new ValidacionException("Un pack no puede tenerse a sí mismo como componente");
+        }
+        Producto componente = productoRepositorio.findById(entrada.productoId())
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No existe el producto componente con id " + entrada.productoId()));
+        if (componente.isEsPack()) {
+            throw new ValidacionException(
+                    "'" + componente.getNombre() + "' es a su vez un pack: no puede usarse como componente");
+        }
+        ComponentePack componentePack = new ComponentePack();
+        componentePack.setPack(pack);
+        componentePack.setComponente(componente);
+        componentePack.setCantidad(entrada.cantidad());
+        return componentePackRepositorio.save(componentePack);
+    }
+
+    private ProductoDTO construirDTO(Producto producto) {
+        if (!producto.isEsPack()) {
+            return ProductoDTO.desde(producto);
+        }
+        List<ComponentePackDTO> componentes = componentePackRepositorio.findByPackId(producto.getId()).stream()
+                .map(ComponentePackDTO::desde)
+                .toList();
+        return ProductoDTO.desde(producto, componentes);
     }
 
     private Categoria buscarCategoria(Long categoriaId) {

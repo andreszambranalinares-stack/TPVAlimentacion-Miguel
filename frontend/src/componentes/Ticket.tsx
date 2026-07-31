@@ -20,6 +20,7 @@ export default function Ticket({ venta }: { venta: Venta }) {
           <p className="flex justify-between">
             <span>
               {linea.cantidad} x {euros(linea.precioUnitario)}
+              {linea.descuentoPorcentaje > 0 ? ` (−${linea.descuentoPorcentaje}%)` : ''}
             </span>
             <span>{euros(linea.subtotal)}</span>
           </p>

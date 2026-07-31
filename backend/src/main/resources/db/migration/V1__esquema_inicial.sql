@@ -54,7 +54,8 @@ CREATE INDEX idx_linea_venta_producto ON linea_venta (producto_id);
 CREATE TABLE movimiento_stock (
     id          BIGSERIAL PRIMARY KEY,
     producto_id BIGINT         NOT NULL REFERENCES producto (id),
-    tipo        VARCHAR(10)    NOT NULL CHECK (tipo IN ('ENTRADA', 'SALIDA', 'AJUSTE', 'MERMA')),
+    tipo        VARCHAR(10)    NOT NULL CONSTRAINT movimiento_stock_tipo_check
+                    CHECK (tipo IN ('ENTRADA', 'SALIDA', 'AJUSTE', 'MERMA')),
     cantidad    NUMERIC(10, 3) NOT NULL,
     motivo      VARCHAR(255),
     fecha_hora  TIMESTAMP      NOT NULL DEFAULT now()

@@ -4,5 +4,6 @@ public enum TipoMovimiento {
     ENTRADA,
     SALIDA,
     AJUSTE,
-    MERMA
+    MERMA,
+    DEVOLUCION
 }

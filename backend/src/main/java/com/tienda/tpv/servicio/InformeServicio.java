@@ -1,11 +1,13 @@
 package com.tienda.tpv.servicio;
 
+import com.tienda.tpv.dominio.Devolucion;
 import com.tienda.tpv.dominio.MetodoPago;
 import com.tienda.tpv.dominio.Producto;
 import com.tienda.tpv.dominio.Venta;
 import com.tienda.tpv.dto.InformeVentasDTO;
 import com.tienda.tpv.dto.ProductoVendidoDTO;
 import com.tienda.tpv.dto.ValorInventarioDTO;
+import com.tienda.tpv.repositorio.DevolucionRepositorio;
 import com.tienda.tpv.repositorio.LineaVentaRepositorio;
 import com.tienda.tpv.repositorio.ProductoRepositorio;
 import com.tienda.tpv.repositorio.VentaRepositorio;
@@ -26,22 +28,31 @@ public class InformeServicio {
     private final VentaRepositorio ventaRepositorio;
     private final LineaVentaRepositorio lineaVentaRepositorio;
     private final ProductoRepositorio productoRepositorio;
+    private final DevolucionRepositorio devolucionRepositorio;
 
     public InformeServicio(VentaRepositorio ventaRepositorio,
                            LineaVentaRepositorio lineaVentaRepositorio,
-                           ProductoRepositorio productoRepositorio) {
+                           ProductoRepositorio productoRepositorio,
+                           DevolucionRepositorio devolucionRepositorio) {
         this.ventaRepositorio = ventaRepositorio;
         this.lineaVentaRepositorio = lineaVentaRepositorio;
         this.productoRepositorio = productoRepositorio;
+        this.devolucionRepositorio = devolucionRepositorio;
     }
 
+    /**
+     * Resumen neto del rango: a lo vendido se le restan las devoluciones del mismo
+     * rango (por el método de pago de la venta original), para que "efectivo" refleje
+     * lo que debería haber de verdad en el cajón.
+     */
     public InformeVentasDTO resumenVentas(LocalDate desde, LocalDate hasta) {
         LocalDate d = desde != null ? desde : LocalDate.now();
         LocalDate h = hasta != null ? hasta : d;
         validarRango(d, h);
 
-        List<Venta> ventas = ventaRepositorio.findByFechaHoraBetweenOrderByFechaHoraDesc(
-                d.atStartOfDay(), h.plusDays(1).atStartOfDay());
+        LocalDateTime inicio = d.atStartOfDay();
+        LocalDateTime fin = h.plusDays(1).atStartOfDay();
+        List<Venta> ventas = ventaRepositorio.findByFechaHoraBetweenOrderByFechaHoraDesc(inicio, fin);
 
         BigDecimal total = BigDecimal.ZERO;
         BigDecimal totalIva = BigDecimal.ZERO;
@@ -54,6 +65,16 @@ public class InformeServicio {
                 efectivo = efectivo.add(venta.getTotal());
             } else {
                 tarjeta = tarjeta.add(venta.getTotal());
+            }
+        }
+
+        for (Devolucion devolucion : devolucionRepositorio.findByFechaHoraBetweenOrderByFechaHoraDesc(inicio, fin)) {
+            total = total.subtract(devolucion.getTotal());
+            totalIva = totalIva.subtract(devolucion.getTotalIva());
+            if (devolucion.getVenta().getMetodoPago() == MetodoPago.EFECTIVO) {
+                efectivo = efectivo.subtract(devolucion.getTotal());
+            } else {
+                tarjeta = tarjeta.subtract(devolucion.getTotal());
             }
         }
         return new InformeVentasDTO(d, h, ventas.size(), total, totalIva, efectivo, tarjeta);

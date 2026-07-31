@@ -3,6 +3,9 @@ import { cerrarCaja, esErrorDeSesionCaducada, informeVentas, listarCierres, mens
 import { euros, hoy } from '../utils'
 import type { CierreCaja, InformeVentas } from '../tipos'
 
+/** Billetes y monedas de euro, de mayor a menor valor. */
+const DENOMINACIONES = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01]
+
 /** Arqueo diario: comparar el efectivo contado con lo que dicen las ventas. */
 export default function Cierre() {
   const [fecha, setFecha] = useState(hoy())
@@ -13,6 +16,8 @@ export default function Cierre() {
   const [error, setError] = useState('')
   const [mensaje, setMensaje] = useState('')
   const [cargando, setCargando] = useState(true)
+  const [contarPorDenominacion, setContarPorDenominacion] = useState(false)
+  const [cantidades, setCantidades] = useState<Record<number, string>>({})
 
   const cierreExistente = cierres.find((c) => c.fecha === fecha)
 
@@ -32,6 +37,17 @@ export default function Cierre() {
 
   useEffect(cargar, [cargar])
 
+  const totalDenominaciones = DENOMINACIONES.reduce((suma, valor) => suma + valor * Number(cantidades[valor] || 0), 0)
+
+  const cambiarCantidadDenominacion = (valor: number, texto: string) => {
+    setCantidades((actual) => {
+      const nuevas = { ...actual, [valor]: texto }
+      const total = DENOMINACIONES.reduce((suma, v) => suma + v * Number(nuevas[v] || 0), 0)
+      setEfectivoContado(total.toFixed(2))
+      return nuevas
+    })
+  }
+
   const diferencia =
     resumen && efectivoContado !== '' ? Number(efectivoContado) - resumen.totalEfectivo : null
 
@@ -40,10 +56,17 @@ export default function Cierre() {
     setError('')
     setMensaje('')
     try {
-      await cerrarCaja({ fecha, efectivoContado: Number(efectivoContado), notas })
+      const denominaciones = contarPorDenominacion
+        ? DENOMINACIONES.filter((v) => Number(cantidades[v] || 0) > 0).map((valor) => ({
+            valor,
+            cantidad: Number(cantidades[valor]),
+          }))
+        : undefined
+      await cerrarCaja({ fecha, efectivoContado: Number(efectivoContado), notas, denominaciones })
       setMensaje('Caja cerrada correctamente')
       setEfectivoContado('')
       setNotas('')
+      setCantidades({})
       cargar()
     } catch (e) {
       if (!esErrorDeSesionCaducada(e)) setError(mensajeDeError(e))
@@ -100,9 +123,55 @@ export default function Cierre() {
               </span>
             </p>
             {cierreExistente.notas && <p className="mt-1 text-slate-500">{cierreExistente.notas}</p>}
+            {cierreExistente.denominaciones.length > 0 && (
+              <div className="mt-2 border-t pt-2 text-xs text-slate-500">
+                <p className="mb-1 font-semibold">Desglose contado</p>
+                {cierreExistente.denominaciones.map((d) => (
+                  <p key={d.valor} className="flex justify-between">
+                    <span>{euros(d.valor)}</span>
+                    <span>× {d.cantidad}</span>
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <form onSubmit={cerrar} className="grid gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={contarPorDenominacion}
+                onChange={(e) => {
+                  setContarPorDenominacion(e.target.checked)
+                  if (!e.target.checked) {
+                    setCantidades({})
+                  } else {
+                    setEfectivoContado(totalDenominaciones.toFixed(2))
+                  }
+                }}
+              />
+              Contar por billetes y monedas
+            </label>
+
+            {contarPorDenominacion && (
+              <div className="grid grid-cols-3 gap-2 rounded border bg-slate-50 p-3 sm:grid-cols-4">
+                {DENOMINACIONES.map((valor) => (
+                  <label key={valor} className="text-xs">
+                    <span className="block text-slate-600">{euros(valor)}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={cantidades[valor] ?? ''}
+                      onChange={(e) => cambiarCantidadDenominacion(valor, e.target.value)}
+                      aria-label={`Cantidad de billetes/monedas de ${euros(valor)}`}
+                      className="w-full rounded border p-1 text-center"
+                    />
+                  </label>
+                ))}
+              </div>
+            )}
+
             <label>
               <span className="text-sm text-slate-600">Efectivo contado en el cajón *</span>
               <input
@@ -110,9 +179,10 @@ export default function Cierre() {
                 type="number"
                 min="0"
                 step="0.01"
+                readOnly={contarPorDenominacion}
                 value={efectivoContado}
                 onChange={(e) => setEfectivoContado(e.target.value)}
-                className="w-full rounded border p-2"
+                className={`w-full rounded border p-2 ${contarPorDenominacion ? 'bg-slate-100' : ''}`}
               />
             </label>
             {diferencia !== null && (

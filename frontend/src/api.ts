@@ -2,18 +2,28 @@ import axios, { AxiosError } from 'axios'
 import type {
   Categoria,
   CierreCaja,
+  Denominacion,
+  Devolucion,
+  DevolucionEntrada,
   ErrorApi,
   InformeVentas,
   MovimientoStock,
+  PedidoProveedor,
+  PedidoProveedorEntrada,
   Producto,
   ProductoEntrada,
   ProductoVendido,
   Proveedor,
+  RecepcionEntrada,
   TipoMovimiento,
   Usuario,
+  UsuarioActualizar,
+  UsuarioAdmin,
+  UsuarioEntrada,
   ValorInventario,
   Venta,
   VentaEntrada,
+  EstadoPedido,
 } from './tipos'
 
 const api = axios.create({ baseURL: '/api' })
@@ -54,8 +64,12 @@ export const cerrarSesion = () => api.post('/auth/logout')
 export const usuarioActual = () => api.get<Usuario>('/auth/yo').then((r) => r.data)
 
 // Cierre de caja
-export const cerrarCaja = (datos: { fecha?: string; efectivoContado: number; notas: string }) =>
-  api.post<CierreCaja>('/cierres-caja', datos).then((r) => r.data)
+export const cerrarCaja = (datos: {
+  fecha?: string
+  efectivoContado: number
+  notas: string
+  denominaciones?: Denominacion[]
+}) => api.post<CierreCaja>('/cierres-caja', datos).then((r) => r.data)
 
 export const listarCierres = () => api.get<CierreCaja[]>('/cierres-caja').then((r) => r.data)
 
@@ -125,3 +139,41 @@ export const productosMasVendidos = (desde?: string, hasta?: string, limite = 10
     .then((r) => r.data)
 
 export const valorInventario = () => api.get<ValorInventario>('/informes/valor-inventario').then((r) => r.data)
+
+// Usuarios (empleados)
+export const listarUsuarios = () => api.get<UsuarioAdmin[]>('/usuarios').then((r) => r.data)
+
+export const crearUsuario = (datos: UsuarioEntrada) => api.post<UsuarioAdmin>('/usuarios', datos).then((r) => r.data)
+
+export const actualizarUsuario = (id: number, datos: UsuarioActualizar) =>
+  api.put<UsuarioAdmin>(`/usuarios/${id}`, datos).then((r) => r.data)
+
+export const cambiarPasswordUsuario = (id: number, password: string) =>
+  api.post(`/usuarios/${id}/password`, { password })
+
+export const cambiarMiPassword = (passwordActual: string, passwordNueva: string) =>
+  api.put('/usuarios/yo/password', { passwordActual, passwordNueva })
+
+// Devoluciones
+export const crearDevolucion = (datos: DevolucionEntrada) =>
+  api.post<Devolucion>('/devoluciones', datos).then((r) => r.data)
+
+export const obtenerVenta = (id: number) => api.get<Venta>(`/ventas/${id}`).then((r) => r.data)
+
+export const listarDevoluciones = (desde?: string, hasta?: string) =>
+  api.get<Devolucion[]>('/devoluciones', { params: { desde, hasta } }).then((r) => r.data)
+
+// Pedidos a proveedor
+export const crearPedidoProveedor = (datos: PedidoProveedorEntrada) =>
+  api.post<PedidoProveedor>('/pedidos-proveedor', datos).then((r) => r.data)
+
+export const listarPedidosProveedor = (estado?: EstadoPedido, proveedorId?: number) =>
+  api.get<PedidoProveedor[]>('/pedidos-proveedor', { params: { estado, proveedorId } }).then((r) => r.data)
+
+export const obtenerPedidoProveedor = (id: number) =>
+  api.get<PedidoProveedor>(`/pedidos-proveedor/${id}`).then((r) => r.data)
+
+export const recibirPedidoProveedor = (id: number, datos: RecepcionEntrada) =>
+  api.post<PedidoProveedor>(`/pedidos-proveedor/${id}/recibir`, datos).then((r) => r.data)
+
+export const cancelarPedidoProveedor = (id: number) => api.post(`/pedidos-proveedor/${id}/cancelar`)

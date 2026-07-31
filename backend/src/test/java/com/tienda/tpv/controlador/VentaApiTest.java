@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -191,5 +192,82 @@ class VentaApiTest {
         mockMvc.perform(get("/api/productos/" + productoId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.stockActual").value(0));
+    }
+
+    @Test
+    void unAdminPuedeAplicarUnDescuentoALaLinea() throws Exception {
+        // 1,21 € con 10% de descuento = 1,089 € → 1,09 € por unidad; x2 = 2,18 €
+        mockMvc.perform(post("/api/ventas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "metodoPago": "EFECTIVO",
+                                  "lineas": [ { "productoId": %d, "cantidad": 2, "descuentoPorcentaje": 10 } ]
+                                }
+                                """.formatted(productoId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.total").value(2.18))
+                .andExpect(jsonPath("$.lineas[0].descuentoPorcentaje").value(10));
+    }
+
+    @Test
+    void unCajeroNoPuedeAplicarDescuentos() throws Exception {
+        mockMvc.perform(post("/api/ventas")
+                        .with(user("cajero_test").roles("CAJERO"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "metodoPago": "EFECTIVO",
+                                  "lineas": [ { "productoId": %d, "cantidad": 1, "descuentoPorcentaje": 5 } ]
+                                }
+                                """.formatted(productoId)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.codigo").value("SIN_PERMISOS"));
+
+        mockMvc.perform(get("/api/productos/" + productoId))
+                .andExpect(jsonPath("$.stockActual").value(10));
+    }
+
+    @Test
+    void devolverParteDeUnaVentaReponeStockYNoPermiteDevolverDeMas() throws Exception {
+        MvcResult venta = mockMvc.perform(post("/api/ventas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(ventaJson(productoId, "4")))
+                .andExpect(status().isCreated())
+                .andReturn();
+        JsonNode ventaJson = objectMapper.readTree(venta.getResponse().getContentAsString());
+        long ventaId = ventaJson.get("id").asLong();
+        long lineaVentaId = ventaJson.get("lineas").get(0).get("id").asLong();
+
+        // Se devuelven 2 de las 4 compradas
+        mockMvc.perform(post("/api/devoluciones")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "ventaId": %d,
+                                  "motivo": "El cliente se ha confundido",
+                                  "lineas": [ { "lineaVentaId": %d, "cantidad": 2 } ]
+                                }
+                                """.formatted(ventaId, lineaVentaId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.total").value(2.42));
+
+        mockMvc.perform(get("/api/productos/" + productoId))
+                .andExpect(jsonPath("$.stockActual").value(8)); // 10 - 4 + 2
+
+        // Solo quedan 2 unidades más por devolver de esa línea
+        mockMvc.perform(post("/api/devoluciones")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "ventaId": %d,
+                                  "lineas": [ { "lineaVentaId": %d, "cantidad": 3 } ]
+                                }
+                                """.formatted(ventaId, lineaVentaId)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.codigo").value("VALIDACION"));
+
+        mockMvc.perform(get("/api/ventas/" + ventaId))
+                .andExpect(jsonPath("$.lineas[0].cantidadDevuelta").value(2));
     }
 }

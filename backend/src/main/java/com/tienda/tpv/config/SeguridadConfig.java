@@ -38,7 +38,10 @@ public class SeguridadConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/error").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/api-docs", "/api-docs/**").permitAll()
-                        .requestMatchers("/api/informes/**", "/api/cierres-caja/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/usuarios/yo/password").authenticated()
+                        .requestMatchers("/api/informes/**", "/api/cierres-caja/**", "/api/usuarios/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/pedidos-proveedor").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/pedidos-proveedor/*/cancelar").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/productos/**", "/api/categorias/**", "/api/proveedores/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/productos/**", "/api/categorias/**", "/api/proveedores/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/productos/**", "/api/categorias/**", "/api/proveedores/**").hasRole("ADMIN")

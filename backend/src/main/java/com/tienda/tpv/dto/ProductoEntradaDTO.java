@@ -1,6 +1,7 @@
 package com.tienda.tpv.dto;
 
 import com.tienda.tpv.dominio.UnidadMedida;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -9,6 +10,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Datos de entrada para crear o actualizar un producto.
@@ -50,6 +52,11 @@ public record ProductoEntradaDTO(
         @NotNull(message = "La unidad de medida es obligatoria")
         UnidadMedida unidadMedida,
 
-        Boolean activo
+        Boolean activo,
+
+        Boolean esPack,
+
+        /** Solo se usa si esPack es true; se ignora en caso contrario. */
+        List<@Valid ComponentePackEntradaDTO> componentes
 ) {
 }
