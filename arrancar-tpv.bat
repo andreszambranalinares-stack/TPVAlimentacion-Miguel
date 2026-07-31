@@ -20,17 +20,21 @@ if %errorlevel%==0 (
 )
 
 REM --- 2. Dependencias de la pantalla (solo la primera vez) -------------
+REM OJO: el "if errorlevel 1" va ANTES del popd. Si fuera despues, el propio
+REM popd (que casi siempre tiene exito) pisaria el codigo de error de "npm
+REM install" y un fallo real de la instalacion pasaria desapercibido.
 if not exist "frontend\node_modules" (
     echo   [2/4] Primera vez: instalando la pantalla. Esto tarda unos minutos...
     pushd frontend
     call npm install
-    popd
     if errorlevel 1 (
+        popd
         echo.
         echo   ERROR: no se pudo instalar la pantalla. Revisa que Node.js este instalado.
         pause
         exit /b 1
     )
+    popd
 ) else (
     echo   [2/4] Pantalla ya preparada.
 )
@@ -47,15 +51,45 @@ REM sobre todo la primerísima vez: Maven tiene que descargarse TODAS las
 REM librerías (no solo las nuevas), y eso puede tardar varios minutos según
 REM la conexión a internet de la tienda. Le damos hasta 10 minutos y vamos
 REM avisando cada 15 segundos para que no parezca que se ha quedado colgado.
+REM
+REM Usamos curl.exe (incluido de serie en Windows 10/11, en System32) en vez
+REM de PowerShell: si el PC de la tienda tiene restringida la ejecución de
+REM scripts de PowerShell (política de grupo, antivirus...), la comprobación
+REM anterior fallaba SIEMPRE aunque el motor ya estuviera listo, y nunca se
+REM abría el navegador solo. curl.exe no depende de eso y basta con que el
+REM servidor responda algo (aunque sea un error 401) para saber que ya
+REM está escuchando.
 echo   [4/4] Esperando a que el motor y la pantalla arranquen...
 echo   ^(la primera vez puede tardar varios minutos: Maven se descarga las librerías^)
+
+REM Por si curl.exe no estuviera disponible (Windows muy antiguo o lo han
+REM quitado): en vez de fallar sin explicación, esperamos un tiempo fijo
+REM generoso y abrimos el navegador de todas formas.
+where curl.exe >nul 2>&1
+if errorlevel 1 (
+    echo   ^(no encuentro curl.exe: espero 90 segundos a ciegas^)
+    timeout /t 90 /nobreak >nul
+    start "" "http://localhost:5173"
+    echo.
+    echo   IMPORTANTE: no cierres las dos ventanas negras que se han abierto.
+    echo   Cuando termines la jornada, ejecuta "parar-tpv.bat".
+    echo.
+    timeout /t 6 /nobreak >nul
+    exit /b 0
+)
+
 set /a intentos=0
 :esperar
 set /a intentos+=1
 set /a resto=intentos %% 15
 if %intentos% gtr 1 if %resto%==0 echo   ...todavía arrancando, un momento más ^(%intentos% segundos^)...
 if %intentos% gtr 600 goto sinrespuesta
-powershell -NoProfile -Command "try { $m = New-Object System.Net.Sockets.TcpClient; $m.Connect('localhost',8080); $m.Close(); $p = New-Object System.Net.Sockets.TcpClient; $p.Connect('localhost',5173); $p.Close(); exit 0 } catch { exit 1 }" >nul 2>&1
+curl.exe -s -o nul --max-time 2 http://localhost:8080/api/auth/yo
+if errorlevel 1 (
+    timeout /t 1 /nobreak >nul
+    goto esperar
+)
+curl.exe -s -o nul --max-time 2 http://localhost:5173
 if errorlevel 1 (
     timeout /t 1 /nobreak >nul
     goto esperar
