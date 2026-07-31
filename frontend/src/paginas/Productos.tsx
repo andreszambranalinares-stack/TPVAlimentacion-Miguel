@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   actualizarProducto,
   buscarProductos,
@@ -46,6 +46,7 @@ export default function Productos() {
   const [catalogo, setCatalogo] = useState<Producto[]>([])
   const [componenteAAgregar, setComponenteAAgregar] = useState<number | ''>('')
   const [cantidadComponente, setCantidadComponente] = useState('1')
+  const nombreRef = useRef<HTMLInputElement>(null)
 
   const cargar = useCallback(() => {
     setCargando(true)
@@ -276,10 +277,10 @@ export default function Productos() {
                 <span className="text-sm text-slate-600">Nombre *</span>
                 <input
                   required
+                  ref={nombreRef}
                   value={formulario.nombre}
                   onChange={(e) => setFormulario({ ...formulario, nombre: e.target.value })}
                   className={campo}
-                  autoFocus
                 />
               </label>
               <label>
@@ -287,7 +288,15 @@ export default function Productos() {
                 <input
                   value={formulario.codigoBarras ?? ''}
                   onChange={(e) => setFormulario({ ...formulario, codigoBarras: e.target.value || null })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      nombreRef.current?.focus()
+                    }
+                  }}
+                  placeholder="Escanea el código o escríbelo…"
                   className={campo}
+                  autoFocus
                 />
               </label>
               <label>

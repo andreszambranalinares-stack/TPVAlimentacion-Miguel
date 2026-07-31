@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { buscarProductos, crearVenta, esErrorDeSesionCaducada, mensajeDeError, productoPorCodigoBarras } from '../api'
 import TicketModal from '../componentes/TicketModal'
 import { useEsAdmin } from '../AuthContexto'
-import { euros } from '../utils'
+import { euros, pareceCodigoBarras } from '../utils'
 import type { MetodoPago, Producto, Venta } from '../tipos'
 
 interface LineaCarrito {
@@ -14,8 +14,6 @@ interface LineaCarrito {
 
 const subtotalLinea = (l: LineaCarrito) =>
   l.producto.precioVenta * l.cantidad * (1 - l.descuentoPorcentaje / 100)
-
-const pareceCodigoBarras = (texto: string) => /^\d{6,}$/.test(texto.trim())
 
 /**
  * Pantalla de caja pensada para teclado y lector de códigos de barras:
