@@ -1,8 +1,14 @@
 import type { Venta } from '../tipos'
 import { euros } from '../utils'
 
+interface Props {
+  venta: Venta
+  /** Efectivo entregado por el cliente, si se registró al cobrar. */
+  entregado?: number | null
+}
+
 /** Ticket imprimible en formato de impresora térmica (58/80 mm). */
-export default function Ticket({ venta }: { venta: Venta }) {
+export default function Ticket({ venta, entregado }: Props) {
   const fecha = new Date(venta.fechaHora)
   return (
     <div className="ticket-print mx-auto w-72 bg-white p-3 font-mono text-xs text-black">
@@ -39,6 +45,18 @@ export default function Ticket({ venta }: { venta: Venta }) {
         <span>Pago</span>
         <span>{venta.metodoPago === 'EFECTIVO' ? 'Efectivo' : 'Tarjeta'}</span>
       </p>
+      {entregado != null && (
+        <>
+          <p className="flex justify-between">
+            <span>Entregado</span>
+            <span>{euros(entregado)}</span>
+          </p>
+          <p className="flex justify-between font-bold">
+            <span>Cambio</span>
+            <span>{euros(entregado - venta.total)}</span>
+          </p>
+        </>
+      )}
       <hr className="my-2 border-dashed border-black" />
       <p className="text-center">¡Gracias por su compra!</p>
     </div>

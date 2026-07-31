@@ -6,6 +6,8 @@ interface Props {
   onCerrar: () => void
   textoBotonCerrar?: string
   colorBotonCerrar?: 'amber' | 'slate'
+  /** Efectivo entregado por el cliente, para imprimir el cambio en el ticket. */
+  entregado?: number | null
 }
 
 /** Modal con el ticket imprimible, reutilizado desde la Caja y desde Informes. */
@@ -14,6 +16,7 @@ export default function TicketModal({
   onCerrar,
   textoBotonCerrar = 'Cerrar',
   colorBotonCerrar = 'amber',
+  entregado,
 }: Props) {
   const claseCerrar =
     colorBotonCerrar === 'amber'
@@ -23,7 +26,7 @@ export default function TicketModal({
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/50 print:bg-transparent">
       <div className="max-h-[90vh] overflow-auto rounded-lg bg-white p-4 shadow-xl">
-        <Ticket venta={venta} />
+        <Ticket venta={venta} entregado={entregado} />
         <div className="mt-4 flex gap-2 print:hidden">
           <button
             onClick={() => window.print()}
