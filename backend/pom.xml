@@ -101,4 +101,92 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+            Perfil "completo": compila la pantalla (frontend) y la mete DENTRO
+            del jar del motor, en /static. Así en la tienda solo hay que
+            arrancar un programa y el ordenador no necesita tener Node
+            instalado: este plugin se descarga su propia copia de Node dentro
+            de target/ solo para compilar.
+
+                ./mvnw -Pcompleto clean package -DskipTests
+
+            Sin este perfil, el jar sale "pelado" (solo la API) y la pantalla
+            se sirve aparte con "npm run dev", que es como se trabaja en
+            desarrollo. Es un perfil aparte a propósito: si se activara
+            siempre, cada "mvn test" tendría que compilar el frontend entero.
+        -->
+        <profile>
+            <id>completo</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <version>1.15.1</version>
+                        <configuration>
+                            <workingDirectory>${project.basedir}/../frontend</workingDirectory>
+                            <installDirectory>${project.build.directory}</installDirectory>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>instalar-node</id>
+                                <phase>generate-resources</phase>
+                                <goals>
+                                    <goal>install-node-and-npm</goal>
+                                </goals>
+                                <configuration>
+                                    <nodeVersion>v20.18.0</nodeVersion>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>npm-install</id>
+                                <phase>generate-resources</phase>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <configuration>
+                                    <arguments>install --no-audit --no-fund</arguments>
+                                </configuration>
+                            </execution>
+                            <execution>
+                                <id>compilar-pantalla</id>
+                                <phase>generate-resources</phase>
+                                <goals>
+                                    <goal>npm</goal>
+                                </goals>
+                                <configuration>
+                                    <arguments>run build</arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!-- La pantalla ya compilada (frontend/dist) va al jar en /static -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>copiar-pantalla-al-jar</id>
+                                <phase>process-resources</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.outputDirectory}/static</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${project.basedir}/../frontend/dist</directory>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

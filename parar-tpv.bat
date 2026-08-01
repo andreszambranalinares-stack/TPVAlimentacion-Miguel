@@ -9,16 +9,21 @@ echo.
 echo   Cerrando la aplicacion...
 echo.
 
-REM Cierra las dos ventanas que abrio arrancar-tpv.bat (y los procesos de dentro,
-REM como el motor Java o el servidor de la pantalla, gracias a /t).
+REM Cierra la ventana que abrio arrancar-tpv.bat (y el programa Java de
+REM dentro, gracias a /t).
 REM IMPORTANTE: el filtro WINDOWTITLE de taskkill exige el titulo EXACTO;
-REM con un "*" al final (como tenia esta linea antes) no encuentra nada
-REM y no cierra nada, aunque no avise de ningun error.
+REM con un "*" al final no encuentra nada y no cierra nada, aunque no avise
+REM de ningun error.
 set "CERRADO=0"
 
-taskkill /fi "WINDOWTITLE eq TPV - Motor (no cerrar)" /t /f >nul 2>&1
+taskkill /fi "WINDOWTITLE eq TPV - Alimentacion Miguel (no cerrar)" /t /f >nul 2>&1
 if %errorlevel%==0 set "CERRADO=1"
 
+REM Por compatibilidad con la version anterior, que abria dos ventanas:
+REM si alguien actualiza el programa con el TPV arrancado, estas seguirian
+REM abiertas y sin esto se quedarian colgadas para siempre.
+taskkill /fi "WINDOWTITLE eq TPV - Motor (no cerrar)" /t /f >nul 2>&1
+if %errorlevel%==0 set "CERRADO=1"
 taskkill /fi "WINDOWTITLE eq TPV - Pantalla (no cerrar)" /t /f >nul 2>&1
 if %errorlevel%==0 set "CERRADO=1"
 

@@ -9,24 +9,39 @@ Punto de venta (TPV) e inventario para Alimentación Miguel, una tienda de alime
 └── frontend/   React 18 + Vite + TypeScript + Tailwind CSS
 ```
 
+## Instalación en el ordenador de la tienda
+
+El PC de la tienda solo necesita **dos cosas instaladas**: **Java 21+** y
+**PostgreSQL**. No hace falta Node: la pantalla va compilada dentro del propio
+programa.
+
+1. Instala [Java 21 (Temurin)](https://adoptium.net) y
+   [PostgreSQL](https://www.postgresql.org/download/) (apunta la contraseña que
+   pongas para el usuario `postgres`, la pedirá el paso siguiente).
+2. Ejecuta **`preparar-pc`** (`.bat` en Windows, `.command` en macOS). Una sola
+   vez. Comprueba Java, crea la base de datos, compila el programa en `tpv.jar`
+   y deja los accesos directos en el escritorio.
+3. A partir de ahí, el día a día es solo `arrancar-tpv` y `parar-tpv`.
+
 ## Uso en la tienda
 
-Para el ordenador de la tienda hay scripts que evitan tener que usar la terminal
-(`.bat` en Windows, `.command` en macOS):
+Scripts pensados para no tener que tocar la terminal (`.bat` en Windows,
+`.command` en macOS):
 
 | Script | Qué hace |
 | --- | --- |
-| `arrancar-tpv` | Arranca PostgreSQL, backend y frontend, y abre el navegador. |
-| `parar-tpv` | Cierra backend y frontend, y hace una copia de seguridad automática antes de terminar (no hace falta acordarse). |
-| `copia-seguridad` | Copia de seguridad manual, a mano: vuelca la base de datos a `copias/tpv_<fecha>.sql` y descarta las de más de 60 días. Útil antes de un cambio importante, además de la automática de `parar-tpv`. |
+| `preparar-pc` (una sola vez) | Comprueba Java y PostgreSQL, crea la base de datos, compila `tpv.jar` y crea los accesos directos. Da instrucciones concretas de qué descargar si falta algo. |
+| `arrancar-tpv` | Arranca PostgreSQL y el programa, espera a que responda y abre el navegador. Tarda unos segundos. |
+| `parar-tpv` | Cierra el programa y hace una copia de seguridad automática antes de terminar (no hace falta acordarse). |
+| `copia-seguridad` | Copia de seguridad manual: vuelca la base de datos a `copias/tpv_<fecha>.sql` y descarta las de más de 60 días. Útil antes de un cambio importante. |
 | `copia-seguridad-automatica` | Versión silenciosa (sin ventanas ni esperas) que usa `parar-tpv` internamente. No hace falta ejecutarla a mano. |
-| `crear-accesos-directos.bat` (solo Windows, una vez) | Crea en el escritorio accesos directos a `arrancar-tpv`/`parar-tpv`/`copia-seguridad` con el icono de la app (`icono-tpv.ico`), para no tener que abrir la carpeta cada vez. |
+| `crear-accesos-directos.bat` (solo Windows) | Crea los accesos directos del escritorio con el icono de la app. Ya lo llama `preparar-pc`; solo hace falta a mano si se borran. |
 
 Cada arranque y cierre, y cada copia de seguridad, queda anotado en
 `.registros/actividad.log` (con fecha y hora) para poder revisar qué pasó si
 algún día algo falla.
 
-El resto de esta sección describe el flujo de desarrollo.
+El resto de este documento describe el flujo de desarrollo.
 
 ## Antes de abrir la tienda con esta app (checklist)
 
@@ -40,6 +55,9 @@ El resto de esta sección describe el flujo de desarrollo.
 4. Prueba el lector de código de barras y la impresora de tickets con el
    hardware real de la tienda antes del primer día — todavía no se ha
    probado con hardware físico, solo en navegador.
+5. Llévate las copias de seguridad fuera del ordenador de vez en cuando (un
+   pendrive o la nube): una copia en el mismo disco no sirve de nada si es el
+   disco el que falla.
 
 ## Requisitos
 
@@ -118,7 +136,31 @@ cd frontend
 npm install
 npm run dev                  # abre http://localhost:5173 (proxy /api → :8080)
 npm run build                # compila TypeScript y genera dist/
+npm run test                 # tests con Vitest + React Testing Library
 ```
+
+## Empaquetado para la tienda (un solo programa)
+
+En desarrollo, backend y frontend van por separado (`:8080` y `:5173`). Para la
+tienda se compila todo en **un único jar**, con la pantalla ya construida dentro
+en `/static`:
+
+```bash
+cd backend
+./mvnw -Pcompleto clean package -DskipTests
+java -jar target/tpv-backend-0.1.0-SNAPSHOT.jar   # todo en http://localhost:8080
+```
+
+El perfil `completo` usa `frontend-maven-plugin`, que **se descarga su propia
+copia de Node dentro de `target/`** solo para compilar: el ordenador que ejecuta
+el jar no necesita Node instalado, y el que lo compila tampoco. Es un perfil
+aparte a propósito — si se activara siempre, cada `mvn test` tendría que
+compilar el frontend entero.
+
+`PantallaConfig` sirve esos ficheros y redirige las rutas de React Router
+(`/caja`, `/productos`…) a `index.html`, dejando fuera `/api/**` para que una
+dirección de API inexistente siga devolviendo un 404 de verdad y no la página
+web con un engañoso 200 OK.
 
 ### Pantalla de caja (uso con teclado y lector)
 

@@ -82,4 +82,16 @@ class PermisosApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].nombre").value("Chuches surtidas"));
     }
+
+    /**
+     * Ahora que el motor también sirve la pantalla, una dirección de API mal
+     * escrita no debe caer en el index.html de la pantalla (que llegaría con un
+     * engañoso 200 OK) ni contarse como error interno del servidor.
+     */
+    @Test
+    void unaDireccionDeApiQueNoExisteDevuelveNoEncontrado() throws Exception {
+        mockMvc.perform(get("/api/esto-no-existe"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.codigo").value("NO_ENCONTRADO"));
+    }
 }

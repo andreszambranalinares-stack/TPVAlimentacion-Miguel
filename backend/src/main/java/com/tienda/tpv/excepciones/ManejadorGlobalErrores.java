@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -85,6 +86,18 @@ public class ManejadorGlobalErrores {
     public ErrorRespuesta conflictoConcurrencia(ObjectOptimisticLockingFailureException ex) {
         return new ErrorRespuesta("CONFLICTO_CONCURRENCIA",
                 "Otro cambio ha modificado este producto al mismo tiempo. Vuelve a intentarlo.");
+    }
+
+    /**
+     * Una dirección que no existe es un 404 normal y corriente, no un fallo del
+     * servidor: sin esto acababa en el manejador genérico de abajo, que
+     * respondía 500 y llenaba el registro de trazas alarmantes cada vez que
+     * alguien escribía mal una URL.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorRespuesta rutaNoEncontrada(NoResourceFoundException ex) {
+        return new ErrorRespuesta("NO_ENCONTRADO", "La dirección solicitada no existe");
     }
 
     @ExceptionHandler(Exception.class)

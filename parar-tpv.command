@@ -8,9 +8,9 @@ echo
 echo "  Cerrando la aplicación..."
 
 # Mata un proceso y todos sus descendientes (hijos, nietos...), de abajo hacia
-# arriba. Hace falta porque el motor Java (lanzado por mvnw) y el servidor de
-# la pantalla (lanzado por npm) son "nietos" del proceso guardado en el .pid,
-# y matar solo ese proceso o solo sus hijos directos los deja huérfanos y vivos.
+# arriba. Se conserva aunque ahora el programa sea un único proceso Java: las
+# versiones anteriores lanzaban el motor con mvnw y la pantalla con npm, que
+# quedaban como "nietos", y matar solo el proceso del .pid los dejaba vivos.
 matar_arbol() {
   local pid="$1"
   for hijo in $(pgrep -P "$pid" 2>/dev/null); do
@@ -19,7 +19,10 @@ matar_arbol() {
   kill "$pid" 2>/dev/null
 }
 
-for nombre in motor pantalla; do
+# "programa" es el proceso actual. "motor" y "pantalla" son los de la versión
+# anterior: si alguien actualiza con el TPV arrancado, seguirían vivos y sin
+# esto se quedarían colgados para siempre.
+for nombre in programa motor pantalla; do
   if [ -f ".registros/$nombre.pid" ]; then
     pid=$(cat ".registros/$nombre.pid")
     matar_arbol "$pid"

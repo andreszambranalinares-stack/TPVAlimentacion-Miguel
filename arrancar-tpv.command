@@ -9,39 +9,42 @@ echo "  ALIMENTACIÓN MIGUEL - arrancando la aplicación"
 echo "  =============================================="
 echo
 
-echo "  [1/4] Comprobando la base de datos..."
+# --- 0. Comprobar que el ordenador está preparado ---------------------
+# Desde que la pantalla va incluida dentro del propio programa, aquí solo
+# hace falta "tpv.jar". Lo genera preparar-pc.command, que se ejecuta una
+# única vez al montar el ordenador de la tienda.
+if [ ! -f "tpv.jar" ]; then
+  echo "  Este ordenador todavía no está preparado."
+  echo
+  echo "  Ejecuta primero preparar-pc.command (solo hay que hacerlo una vez)."
+  echo
+  echo "$(date) [arrancar-tpv] AVISO: falta tpv.jar, hay que ejecutar preparar-pc" >> .registros/actividad.log
+  read -r
+  exit 1
+fi
+
+# --- 1. Base de datos -------------------------------------------------
+echo "  [1/3] Comprobando la base de datos..."
 if command -v brew >/dev/null 2>&1; then
   brew services start postgresql@16 >/dev/null 2>&1 || brew services start postgresql >/dev/null 2>&1 || true
 fi
 
-if [ ! -d "frontend/node_modules" ]; then
-  echo "  [2/4] Primera vez: instalando la pantalla. Esto tarda unos minutos..."
-  (cd frontend && npm install) || { echo "  ERROR: no se pudo instalar la pantalla."; echo "$(date) [arrancar-tpv] ERROR: fallo npm install" >> .registros/actividad.log; read -r; exit 1; }
-else
-  echo "  [2/4] Pantalla ya preparada."
-fi
+# --- 2. Arrancar el programa ------------------------------------------
+echo "  [2/3] Arrancando el programa..."
+java -jar tpv.jar > .registros/programa.log 2>&1 &
+echo $! > .registros/programa.pid
 
-echo "  [3/4] Arrancando el motor y la pantalla..."
-mkdir -p .registros
-(cd backend && ./mvnw spring-boot:run > ../.registros/motor.log 2>&1) &
-echo $! > .registros/motor.pid
-(cd frontend && npm run dev > ../.registros/pantalla.log 2>&1) &
-echo $! > .registros/pantalla.pid
-
-# IMPORTANTE: hay que esperar a los DOS puertos (8080 motor, 5173 pantalla).
-# La pantalla arranca casi al instante, pero el motor (Java) tarda más, sobre
-# todo la primerísima vez: Maven tiene que descargarse TODAS las librerías
-# (no solo las nuevas), y eso puede tardar varios minutos según la conexión
-# a internet de la tienda. Le damos hasta 10 minutos, avisando cada 15
-# segundos para que no parezca que se ha quedado colgado.
-echo "  [4/4] Esperando a que el motor y la pantalla arranquen..."
-echo "  (la primera vez puede tardar varios minutos: Maven se descarga las librerías)"
-for i in $(seq 1 600); do
-  if curl -s -o /dev/null http://localhost:8080/api/auth/yo && curl -s -o /dev/null http://localhost:5173; then
+# --- 3. Esperar a que responda y abrir el navegador -------------------
+# Ahora solo hay UN puerto que esperar (8080): el mismo programa sirve
+# tanto los datos como la pantalla. Y ya no hay descargas que hacer (eso lo
+# dejó resuelto preparar-pc), así que tarda segundos, no minutos.
+echo "  [3/3] Esperando a que el programa esté listo..."
+for i in $(seq 1 180); do
+  if curl -s -o /dev/null --max-time 2 http://localhost:8080/api/auth/yo; then
     echo
     echo "  Listo. Abriendo la aplicación en el navegador..."
     echo "$(date) [arrancar-tpv] Listo, navegador abierto" >> .registros/actividad.log
-    open "http://localhost:5173"
+    open "http://localhost:8080"
     echo
     echo "  IMPORTANTE: no cierres esta ventana mientras uses la aplicación."
     echo "  Para cerrar todo, ejecuta parar-tpv.command."
@@ -50,16 +53,17 @@ for i in $(seq 1 600); do
     exit 0
   fi
   if [ $((i % 15)) -eq 0 ]; then
-    echo "  ...todavía arrancando, un momento más ($i segundos)..."
+    echo "  ...todavía arrancando ($i segundos)..."
   fi
   sleep 1
 done
 
 echo
-echo "  La aplicación tarda mucho más de lo normal en arrancar (más de 10 minutos)."
-echo "  Revisa .registros/motor.log por si hay algún error."
+echo "  El programa tarda mucho más de lo normal en arrancar (más de 3 minutos)."
+echo "  Revisa .registros/programa.log por si hay algún error."
+echo "  Lo más habitual es que la base de datos no esté arrancada."
 echo "  Probamos igualmente a abrir el navegador, por si ya está casi lista:"
-echo "$(date) [arrancar-tpv] AVISO: tardo mas de 10 minutos en responder" >> .registros/actividad.log
-open "http://localhost:5173"
+echo "$(date) [arrancar-tpv] AVISO: tardo mas de 3 minutos en responder" >> .registros/actividad.log
+open "http://localhost:8080"
 read -r
 exit 1
