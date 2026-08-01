@@ -46,7 +46,16 @@ public class SeguridadConfig {
                         .requestMatchers(HttpMethod.POST, "/api/productos/**", "/api/categorias/**", "/api/proveedores/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/productos/**", "/api/categorias/**", "/api/proveedores/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/productos/**", "/api/categorias/**", "/api/proveedores/**").hasRole("ADMIN")
-                        .anyRequest().authenticated())
+                        // Cualquier otra llamada a la API exige sesión iniciada.
+                        .requestMatchers("/api/**").authenticated()
+                        // Lo que queda son los ficheros de la propia pantalla
+                        // (index.html, JavaScript, estilos) y sus rutas internas
+                        // tipo /caja o /productos, que ahora sirve el motor. Son
+                        // públicos a propósito: no contienen ningún dato de la
+                        // tienda, y sin ellos el navegador no podría ni pintar la
+                        // pantalla de login. Los datos siguen protegidos porque
+                        // todos viajan por /api/**.
+                        .anyRequest().permitAll())
                 .exceptionHandling(errores -> errores
                         .authenticationEntryPoint((peticion, respuesta, ex) ->
                                 escribirError(respuesta, HttpServletResponse.SC_UNAUTHORIZED,

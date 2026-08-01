@@ -10,8 +10,22 @@ echo   ALIMENTACION MIGUEL - arrancando la aplicacion
 echo   ==============================================
 echo.
 
+REM --- 0. Comprobar que el ordenador esta preparado ---------------------
+REM Desde que la pantalla va incluida dentro del propio programa, aqui solo
+REM hace falta "tpv.jar". Lo genera "preparar-pc.bat", que se ejecuta una
+REM unica vez al montar el ordenador de la tienda.
+if not exist "tpv.jar" (
+    echo   Este ordenador todavia no esta preparado.
+    echo.
+    echo   Ejecuta primero "preparar-pc.bat" ^(solo hay que hacerlo una vez^).
+    echo.
+    echo %date% %time% [arrancar-tpv] AVISO: falta tpv.jar, hay que ejecutar preparar-pc >> ".registros\actividad.log"
+    pause
+    exit /b 1
+)
+
 REM --- 1. Base de datos -------------------------------------------------
-echo   [1/4] Comprobando la base de datos...
+echo   [1/3] Comprobando la base de datos...
 sc query "postgresql-x64-16" >nul 2>&1
 if %errorlevel%==0 (
     net start "postgresql-x64-16" >nul 2>&1
@@ -21,89 +35,48 @@ if %errorlevel%==0 (
     )
 )
 
-REM --- 2. Dependencias de la pantalla (solo la primera vez) -------------
-REM OJO: el "if errorlevel 1" va ANTES del popd. Si fuera despues, el propio
-REM popd (que casi siempre tiene exito) pisaria el codigo de error de "npm
-REM install" y un fallo real de la instalacion pasaria desapercibido.
-if not exist "frontend\node_modules" (
-    echo   [2/4] Primera vez: instalando la pantalla. Esto tarda unos minutos...
-    pushd frontend
-    call npm install
-    if errorlevel 1 (
-        popd
-        echo.
-        echo   ERROR: no se pudo instalar la pantalla. Revisa que Node.js este instalado.
-        echo %date% %time% [arrancar-tpv] ERROR: fallo npm install >> ".registros\actividad.log"
-        pause
-        exit /b 1
-    )
-    popd
-) else (
-    echo   [2/4] Pantalla ya preparada.
-)
+REM --- 2. Arrancar el programa (una sola ventana) -----------------------
+echo   [2/3] Arrancando el programa...
+start "TPV - Alimentacion Miguel (no cerrar)" cmd /k "java -jar "%~dp0tpv.jar""
 
-REM --- 3. Arrancar backend y pantalla en sus ventanas -------------------
-echo   [3/4] Arrancando el motor y la pantalla...
-start "TPV - Motor (no cerrar)" cmd /k "cd /d "%~dp0backend" && mvnw.cmd spring-boot:run"
-start "TPV - Pantalla (no cerrar)" cmd /k "cd /d "%~dp0frontend" && npm run dev"
-
-REM --- 4. Esperar a que el motor Y la pantalla respondan, y abrir el navegador
-REM IMPORTANTE: hay que esperar a los DOS puertos (8080 motor, 5173 pantalla).
-REM La pantalla arranca casi al instante, pero el motor (Java) tarda más,
-REM sobre todo la primerísima vez: Maven tiene que descargarse TODAS las
-REM librerías (no solo las nuevas), y eso puede tardar varios minutos según
-REM la conexión a internet de la tienda. Le damos hasta 10 minutos y vamos
-REM avisando cada 15 segundos para que no parezca que se ha quedado colgado.
+REM --- 3. Esperar a que responda y abrir el navegador -------------------
+REM Ahora solo hay UN puerto que esperar (8080): el mismo programa sirve
+REM tanto los datos como la pantalla. Y ya no hay descargas que hacer
+REM (eso lo dejo resuelto preparar-pc), asi que tarda segundos, no minutos.
 REM
-REM Usamos curl.exe (incluido de serie en Windows 10/11, en System32) en vez
-REM de PowerShell: si el PC de la tienda tiene restringida la ejecución de
-REM scripts de PowerShell (política de grupo, antivirus...), la comprobación
-REM anterior fallaba SIEMPRE aunque el motor ya estuviera listo, y nunca se
-REM abría el navegador solo. curl.exe no depende de eso y basta con que el
-REM servidor responda algo (aunque sea un error 401) para saber que ya
-REM está escuchando.
-echo   [4/4] Esperando a que el motor y la pantalla arranquen...
-echo   ^(la primera vez puede tardar varios minutos: Maven se descarga las librerías^)
+REM Usamos curl.exe (viene de serie en Windows 10/11, en System32) en vez de
+REM PowerShell: si el PC de la tienda tiene restringida la ejecucion de
+REM scripts de PowerShell (politica de grupo, antivirus...), la comprobacion
+REM fallaria siempre aunque el programa ya estuviera listo. A curl le basta
+REM con que el servidor responda algo, aunque sea un error 401.
+echo   [3/3] Esperando a que el programa este listo...
 
-REM Por si curl.exe no estuviera disponible (Windows muy antiguo o lo han
-REM quitado): en vez de fallar sin explicación, esperamos un tiempo fijo
-REM generoso y abrimos el navegador de todas formas.
 where curl.exe >nul 2>&1
 if errorlevel 1 (
-    echo   ^(no encuentro curl.exe: espero 90 segundos a ciegas^)
-    timeout /t 90 /nobreak >nul
-    start "" "http://localhost:5173"
-    echo.
-    echo   IMPORTANTE: no cierres las dos ventanas negras que se han abierto.
-    echo   Cuando termines la jornada, ejecuta "parar-tpv.bat".
-    echo.
-    timeout /t 6 /nobreak >nul
-    exit /b 0
+    echo   ^(no encuentro curl.exe: espero 40 segundos a ciegas^)
+    timeout /t 40 /nobreak >nul
+    goto :abrir
 )
 
 set /a intentos=0
 :esperar
 set /a intentos+=1
 set /a resto=intentos %% 15
-if %intentos% gtr 1 if %resto%==0 echo   ...todavía arrancando, un momento más ^(%intentos% segundos^)...
-if %intentos% gtr 600 goto sinrespuesta
+if %intentos% gtr 1 if %resto%==0 echo   ...todavia arrancando ^(%intentos% segundos^)...
+if %intentos% gtr 180 goto :sinrespuesta
 curl.exe -s -o nul --max-time 2 http://localhost:8080/api/auth/yo
 if errorlevel 1 (
     timeout /t 1 /nobreak >nul
-    goto esperar
-)
-curl.exe -s -o nul --max-time 2 http://localhost:5173
-if errorlevel 1 (
-    timeout /t 1 /nobreak >nul
-    goto esperar
+    goto :esperar
 )
 
+:abrir
 echo.
 echo   Listo. Abriendo la aplicacion en el navegador...
 echo %date% %time% [arrancar-tpv] Listo, navegador abierto >> ".registros\actividad.log"
-start "" "http://localhost:5173"
+start "" "http://localhost:8080"
 echo.
-echo   IMPORTANTE: no cierres las dos ventanas negras que se han abierto.
+echo   IMPORTANTE: no cierres la ventana negra que se ha abierto.
 echo   Cuando termines la jornada, ejecuta "parar-tpv.bat".
 echo.
 timeout /t 6 /nobreak >nul
@@ -111,11 +84,12 @@ exit /b 0
 
 :sinrespuesta
 echo.
-echo   La aplicacion tarda mucho mas de lo normal en arrancar ^(mas de 10 minutos^).
-echo   Mira la ventana "TPV - Motor" a ver si muestra algun error.
+echo   El programa tarda mucho mas de lo normal en arrancar ^(mas de 3 minutos^).
+echo   Mira la ventana "TPV - Alimentacion Miguel" a ver si muestra algun error.
+echo   Lo mas habitual es que la base de datos no este arrancada.
 echo   Probamos igualmente a abrir el navegador, por si ya esta casi lista:
-echo %date% %time% [arrancar-tpv] AVISO: tardo mas de 10 minutos en responder >> ".registros\actividad.log"
-start "" "http://localhost:5173"
+echo %date% %time% [arrancar-tpv] AVISO: tardo mas de 3 minutos en responder >> ".registros\actividad.log"
+start "" "http://localhost:8080"
 echo.
 pause
 exit /b 1
